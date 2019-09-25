@@ -143,6 +143,7 @@ class FLDDeconstructor:
 
         except BaseException as BE:
             print(BE)
+            # raise
 
 if __name__ == '__main__':
     ancillaries = {}
@@ -152,3 +153,7 @@ if __name__ == '__main__':
         anc = FLD.get_all_ancillaries()
         T = anc['DV']['T_r']*0.8
         FLD.check_ancillaries(anc, name, T)
+        ancillaries[name] = anc
+
+    with open('all_ancillaries.json','w') as fp:
+        fp.write(json.dumps(ancillaries, indent=2))
