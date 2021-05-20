@@ -55,12 +55,15 @@ class FLDDeconstructor:
                 matches.append(i)
         return matches
 
-    def get_block(self, startrow, endrow):
-        matches = self.lines_starts_with(startrow, self.lines, start_index = 0)
+    def get_block(self, startreg, endreg, start_index=0, indices=False):
+        matches = self.lines_starts_with(startreg, self.lines, start_index = start_index)
         istart = matches[0]
-        matches = self.lines_equals(endrow, self.lines, start_index = istart+1)
+        matches = self.lines_equals(endreg, self.lines, start_index = istart+1)
         iend = matches[0]
-        return self.lines[istart:iend]
+        if indices:
+            return self.lines[istart:iend], istart, iend
+        else:
+            return self.lines[istart:iend]
 
     def strip_commented(self, block):
         return list(filter(lambda l: not l.startswith('?') and not l.startswith('!'), block))
@@ -163,9 +166,6 @@ class FLDDeconstructor:
             "SMILES": "?"
         }
 
-    def get_states(self):
-        return {}
-
     def ancillary_evaluator(self, anc, T):
         T_r = anc['T_r']
         theta = 1-T/T_r
@@ -202,13 +202,88 @@ class FLDDeconstructor:
             print(BE)
             # raise
 
+    def get_alpha0(self, Tc):
+        def get_PX0_block():
+            imin, imax = 0, len(self.lines)
+            for i in range(100):
+                try:
+                    block, imin, imaxnew = self.get_block('#AUX', r'^\s*[\n\r]', imin, indices=True) # end of block is either empty line or three or more spaces
+                    imin = imaxnew
+                    kind = block[1].split(' ')[0]
+                    if kind == 'PX0':
+                        return block
+                except IndexError:
+                    pass
+            raise IndexError("Cannot find PX0 block")
+        PX0_block = get_PX0_block()
+        print(''.join(PX0_block))
+        term_spec = self.get_keyed_line(PX0_block,' !Nterms',int)
+        names = ['ai*log(tau**ti)','ai*tau**ti','ai*log(1-exp(bi*tau))']
+
+        alpha0 = []
+        i = self.lines_contains('!Nterms', PX0_block)[0]+1
+        for Nterms, name in zip(term_spec, names):
+            lines = PX0_block[i:i+Nterms]
+            if name == 'ai*log(tau**ti)':
+                if len(lines) == 1:
+                    els = [el.strip() for el in lines[0].split(' ') if el]
+                    if float(els[1]) != 1.0: 
+                        raise ValueError("ti must be 1.0 in ai*log(tau**ti)")
+                    alpha0.append({
+                        "a": float(els[0]),
+                        'type': 'IdealGasHelmholtzLogTau'
+                    })
+                else:
+                    raise IndexError()
+            elif name == 'ai*tau**ti':
+                a1 = None # constant term
+                a2 = None # term multiplying tau
+                if len(lines) != 2:
+                    raise ValueError("Don't understand what to do when more than two terms")
+                for line in lines:
+                    els = [el.strip() for el in line.split(' ') if el]
+                    ai = float(els[0])
+                    ti = float(els[1])
+                    if ti == 0.0: 
+                        a1 = ai
+                    elif ti == 1.0: 
+                        a2 = ai
+                    else:
+                        raise ValueError(els, ai, ti)
+                assert(a1 is not None)
+                assert(a2 is not None)
+                alpha0.append({
+                    "a1": a1,
+                    "a2": a2,
+                    "type": "IdealGasHelmholtzLead"
+                })
+            elif name == 'ai*log(1-exp(bi*tau))':
+                n, t = [],[]
+                for line in lines:
+                    els = [el.strip() for el in line.split(' ') if el]
+                    ni,ti = [float(el) for el in els[0:2]]
+                    n.append(ni)
+                    t.append(ti/Tc)
+                alpha0.append({
+                    "n": n, "t": t,
+                    "type": "IdealGasHelmholtzPlanckEinstein"
+                })
+            elif name == 'Hmm':
+                pass
+            else:
+                raise ValueError("Bad alpha0 contribution" + name)
+
+            i += Nterms
+
+        return alpha0
+
     def get_EOS(self):
-        block = self.get_block('#EOS', r'^\n+|^[\s]+') # end is either empty line or one or more spaces
+        block = self.get_block('#EOS', r'^\s*[\n\r]') # end of block is a line with only whitespace and terminated with a newline, or a carraige return
         block = self.strip_commented(block)
         indices = self.lines_contains('eta      beta    gamma   epsilon', block)
         if indices:
             block = block[0:indices[0]]
-        print(''.join(block))
+        # print(''.join(block))
         kind = block[1].split(' ')[0]
         if kind != 'FEQ':
             return None
@@ -269,7 +344,6 @@ class FLDDeconstructor:
             i += Nterms
 
         pr = 1e30
-        alpha0 = []
 
         # Get the terms
         EOS = {
@@ -319,7 +393,7 @@ class FLDDeconstructor:
           "Ttriple_units": "K",
           "acentric": acentric,
           "acentric_units": "-",
-          "alpha0": alpha0,
+          "alpha0": self.get_alpha0(Tc=Tr),
           "alphar": alphar,
           "gas_constant": R,
           "gas_constant_units": "J/mol/K",
@@ -348,9 +422,8 @@ class FLDDeconstructor:
 
 if __name__ == '__main__':
 
-    FLD = FLDDeconstructor('3METHYLPENTANE.FLD')
-    FLD.get_EOS()
-    FLD.write_JSON('3METHYLPENTANE.json')
+    for FLD in '3METHYLPENTANE','23DIMETHYLBUTANE','22DIMETHYLBUTANE':
+        FLDDeconstructor(f'{FLD}.FLD').write_JSON(f'{FLD}.json')
     quit()
 
     ancillaries = {}
