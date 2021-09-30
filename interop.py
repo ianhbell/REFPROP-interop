@@ -217,7 +217,7 @@ class FLDDeconstructor:
                     pass
             raise IndexError("Cannot find PX0 block")
         PX0_block = get_PX0_block()
-        print(''.join(PX0_block))
+        # print(''.join(PX0_block))
         term_spec = self.get_keyed_line(PX0_block,' !Nterms',int)
         names = ['ai*log(tau**ti)','ai*tau**ti','ai*log(1-exp(bi*tau))']
 
