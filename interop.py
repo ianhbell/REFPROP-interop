@@ -102,7 +102,7 @@ class FLDDeconstructor:
         reducing[1] *= 1000 # REFPROP uses mol/L & kPa, CoolProp uses mol/m^3 & Pa, multiply by 1000 to convert
         for row in block[8::]:
             _n, _t = [_ for _ in row.lstrip().split(' ') if _][0:2]
-            n.append(float(_n))
+            n.append(float(_n.replace('D+','e+')))
             t.append(float(_t))
         assert(len(n) == Ncoeffs[0] and len(t) == Ncoeffs[0])
         desc = self.get_ancillary_description(model_key.strip())
