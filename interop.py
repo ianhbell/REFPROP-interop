@@ -313,6 +313,8 @@ class FLDDeconstructor:
         for name, pair in zip(names, pairs):
             Nterms, Ncoefperterm = pair
             lines = block[i:i+Nterms]
+            if Ncoefperterm == 0:
+                continue
             if name == 'Polynomial':
                 n,t,d,l = [],[],[],[]
                 assert(Ncoefperterm==4)
