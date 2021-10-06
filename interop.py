@@ -577,7 +577,9 @@ class HMXBuilder:
             else:
                 print(el['type']+'"""""""""""""""""""""""""""""')
             out += MODEL_template.format(**locals())
-            out += '\n'.join(rows) + '\n\n' + HMX_footer
+            out += '\n'.join(rows) + '\n\n'
+
+        out += '\n\n' + HMX_footer
 
         self.out = out
 
