@@ -112,8 +112,10 @@ class FLDDeconstructor:
             type_key = 'rhoLnoexp'
         elif model_key[0:2] == 'DL':
             type_key = 'rhoL'
+            t = t if model_key[2] in ['1','3','5'] else [t_/3 for t_ in t]
         elif model_key[0:2] == 'DV':
             type_key = 'rhoV'
+            t = t if model_key[2] in ['1','3','5'] else [t_/3 for t_ in t]
         else:
             raise KeyError(model_key)
 
