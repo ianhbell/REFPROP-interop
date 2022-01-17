@@ -325,7 +325,7 @@ class FLDDeconstructor:
         pt_kPa = get_keyed_line('!Pressure at triple point',float)[0]
         pmax_kPa = get_keyed_line('!Upper pressure limit',float)[0]
         # Reducing parameters
-        Tr, rhor_moldm3 = get_keyed_line('!Reducing parameters',float)
+        Tr, pc_kPa, rhor_moldm3 = get_keyed_line('!Tc [K], pc [kPa], rhoc [mol/L]',float)
         # Term specification
         terms = get_keyed_line(' !# terms and # coefs/term',int)
         def chunkify(y, *, n):
@@ -370,7 +370,7 @@ class FLDDeconstructor:
                 
             i += Nterms
 
-        pr = 1e30
+        pr = pc_kPa*1e3
 
         # Get the terms
         EOS = {
