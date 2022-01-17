@@ -142,6 +142,28 @@ class FLDDeconstructor:
         anc = self.get_all_ancillaries()
         return {'pS': anc['PS'], 'rhoL': anc['DL'], 'rhoV': anc["DV"]}
 
+    def formula_from_inchi(self):
+        """ Parse the standard inchi string to extract the chemical formula in Hill order """
+        stdinchistring = self.get_keyed_line(self.lines, '!Standard InChI String', lambda x: x)[0]
+        formula = stdinchistring.split('/')[1]
+        matches = re.findall(r'[A-Z][a-z]*[0-9]*', formula)
+        assert(sum([len(m) for m in matches]) == len(formula)) # make sure all parts are matched
+        o = ''
+        for match in matches:
+            def replacer(m):
+                N = len(m.groups())
+                print(m, N)
+                if N == 0:
+                    return m.group(0)+'_{1}'
+                else:
+                    i = m.group(1)
+                    return f'_{{{i}}}'
+            newmatch = re.sub(r'([0-9]+)', replacer, match)
+            if '_{' not in newmatch:
+                newmatch += '_{1}'
+            o += newmatch
+        return o
+
     def get_info(self):
         CHEMSPIDER_ID = -1
         name = os.path.split(self.path)[1].split('.')[0]
@@ -161,7 +183,7 @@ class FLDDeconstructor:
               "ODP": -1e30,
               "PH": 0
             },
-            "FORMULA": self.get_keyed_line(self.lines, '!Chemical formula', lambda x: x)[0],
+            "FORMULA": self.formula_from_inchi(),
             "INCHI_KEY": self.get_keyed_line(self.lines, '!Standard InChI Key', lambda x: x)[0],
             "INCHI_STRING": self.get_keyed_line(self.lines, '!Standard InChI String', lambda x: x)[0],
             "NAME": name,
