@@ -8,6 +8,28 @@ import hashlib
 
 import CoolProp.CoolProp as CP
 
+def lines_starts_with(s, lines, *, start_index=0):
+    matches = []
+    for i in range(start_index, len(lines)):
+        if lines[i].startswith(s):
+            matches.append(i)
+    return matches
+
+def lines_contains(s, lines, *, start_index=0):
+    matches = []
+    for i in range(start_index, len(lines)):
+        if s in lines[i]:
+            matches.append(i)
+    return matches
+
+def lines_equals(s, lines, *, start_index=0):
+    matches = []
+    for i in range(start_index, len(lines)):
+        if re.fullmatch(s, lines[i]):
+            matches.append(i)
+    return matches
+
+
 class FLDDeconstructor:
     """
     Read a REFPROP fluid file, and convert to the 
@@ -34,32 +56,11 @@ class FLDDeconstructor:
                 return [conv(el) for el in els.split(' ') if el]
         raise KeyError(key)
 
-    def lines_starts_with(self, s, lines, *, start_index=0):
-        matches = []
-        for i in range(start_index, len(lines)):
-            if lines[i].startswith(s):
-                matches.append(i)
-        return matches
-
-
-    def lines_contains(self, s, lines, *, start_index=0):
-        matches = []
-        for i in range(start_index, len(lines)):
-            if s in lines[i]:
-                matches.append(i)
-        return matches
-
-    def lines_equals(self, s, lines, *, start_index=0):
-        matches = []
-        for i in range(start_index, len(lines)):
-            if re.fullmatch(s, lines[i]):
-                matches.append(i)
-        return matches
-
+    
     def get_block(self, startreg, endreg, start_index=0, indices=False):
-        matches = self.lines_starts_with(startreg, self.lines, start_index = start_index)
+        matches = lines_starts_with(startreg, self.lines, start_index = start_index)
         istart = matches[0]
-        matches = self.lines_equals(endreg, self.lines, start_index = istart+1)
+        matches = lines_equals(endreg, self.lines, start_index = istart+1)
         iend = matches[0]
         if indices:
             return self.lines[istart:iend], istart, iend
@@ -246,7 +247,7 @@ class FLDDeconstructor:
         names = ['ai*log(tau**ti)','ai*tau**ti','ai*log(1-exp(bi*tau))']
 
         alpha0 = []
-        i = self.lines_contains('!Nterms', PX0_block)[0]+1
+        i = lines_contains('!Nterms', PX0_block)[0]+1
         for Nterms, name in zip(term_spec, names):
             lines = PX0_block[i:i+Nterms]
             if name == 'ai*log(tau**ti)':
@@ -305,7 +306,7 @@ class FLDDeconstructor:
     def get_EOS(self):
         block = self.get_block('#EOS', r'^\s*[\n\r]') # end of block is a line with only whitespace and terminated with a newline, or a carraige return
         block = self.strip_commented(block)
-        indices = self.lines_contains('eta      beta    gamma   epsilon', block)
+        indices = lines_contains('eta      beta    gamma   epsilon', block)
         if indices:
             block = block[0:indices[0]]
         # print(''.join(block))
@@ -333,40 +334,71 @@ class FLDDeconstructor:
         pairs = chunkify(terms, n=2)
         names = ['Polynomial','Gaussian','Hmm','Hmm','Hmm','Hmm']
         alphar = []
-        i = self.lines_contains('!# terms and # coefs/term', block)[0]+1
+        i = lines_contains('!# terms and # coefs/term', block)[0]+1
         for name, pair in zip(names, pairs):
             Nterms, Ncoefperterm = pair
             lines = block[i:i+Nterms]
             if Ncoefperterm == 0:
                 continue
             if name == 'Polynomial':
-                n,t,d,l = [],[],[],[]
-                assert(Ncoefperterm==4)
-                for line in lines:
-                    els = [el.strip() for el in line.split(' ') if el]
-                    ni,ti,di,li = [float(el) for el in els[0:4]]
-                    n.append(ni)
-                    t.append(ti)
-                    d.append(di)
-                    l.append(li)
-                alphar.append({"n": n, "t": t, "d": d, "l": l,
-                               "type": "ResidualHelmholtzPower"})
+                if Ncoefperterm == 4:
+                    n,t,d,l = [],[],[],[]
+                    for line in lines:
+                        els = [el.strip() for el in line.split(' ') if el]
+                        ni,ti,di,li = [float(el) for el in els[0:4]]
+                        n.append(ni)
+                        t.append(ti)
+                        d.append(di)
+                        l.append(li)
+                    alphar.append({"n": n, "t": t, "d": d, "l": l,
+                                   "type": "ResidualHelmholtzPower"})
+                elif Ncoefperterm == 5:
+                    n,t,d,l,g = [],[],[],[],[]
+                    for line in lines:
+                        els = [el.strip() for el in line.split(' ') if el]
+                        ni,ti,di,li,gi = [float(el) for el in els[0:5]]
+                        n.append(ni)
+                        t.append(ti)
+                        d.append(di)
+                        l.append(li)
+                        g.append(gi)
+                    alphar.append({"n": n, "t": t, "d": d, "l": l, "g": g,
+                                   "type": "ResidualHelmholtzExponential"})
+                else:
+                    raise ValueError()
+
             elif name == 'Gaussian':
                 n,t,d,eta,beta,gamma,epsilon = [],[],[],[],[],[],[]
                 assert(Ncoefperterm==12)
                 for line in lines:
                     els = [el.strip() for el in line.split(' ') if el]
-                    ni,ti,di,ph1,ph2,negetai,negbetai,gammai,epsiloni,ph3,ph4,ph5 = [float(el) for el in els[0:12]]
-                    n.append(ni)
-                    t.append(ti)
-                    d.append(di)
-                    eta.append(-negetai)
-                    beta.append(-negbetai)
-                    gamma.append(gammai)
-                    epsilon.append(epsiloni)
+                    if all([float(el)==0 for el in els[9:12]]):
+                        # Normal gaussian term if last three placeholders are zero
+                        ni,ti,di,ph1,ph2,negetai,negbetai,gammai,epsiloni,ph3,ph4,ph5 = [float(el) for el in els[0:12]]
+                        n.append(ni)
+                        t.append(ti)
+                        d.append(di)
+                        eta.append(-negetai)
+                        beta.append(-negbetai)
+                        gamma.append(gammai)
+                        epsilon.append(epsiloni)
+                    else:
+                        raise NotImplementedError("No non-analytic yet")
+                        # Non-analytic if last three placeholders are non-zero
+                        ni,ti,di,ph1,ph2,negetai,negbetai,gammai,epsiloni,ph3,ph4,ph5 = [float(el) for el in els[0:12]]
+                        n.append(ni)
+                        t.append(ti)
+                        d.append(di)
+                        eta.append(-negetai)
+                        beta.append(-negbetai)
+                        gamma.append(gammai)
+                        epsilon.append(epsiloni)
+
                 alphar.append({"n": n, "t": t, "d": d, 
                                "eta": eta, "beta": beta, "gamma": gamma, "epsilon": epsilon,
                                "type": "ResidualHelmholtzGaussian"})
+            else:
+                raise ValueError("I don't yet understand:"+name)
                 
             i += Nterms
 
@@ -446,6 +478,197 @@ class FLDDeconstructor:
         }
         with open(jsonpath, 'w') as fp:
             fp.write(json.dumps(f, indent=2))
+
+class HMXDeconstructor:
+    """ 
+    Take a REFPROP 10 compatible HMX.BNC, convert to 
+    CoolProp format departure and binary interaction files
+    """
+    def __init__(self, path, RProot):
+        self.path = path
+        self.RProot = RProot
+        self.lines = [line.strip() for line in codecs.open(path, encoding='cp1252').readlines()]
+        self.CASlookup = self.get_CASlookup()
+        self.RPlookup = self.get_RPlookup()
+        self.dep = self.get_departure_functions()
+        self.BIP = self.get_binary_interaction()
+
+    def get_CASlookup(self):
+        o = {}
+        for FLDpath in glob.glob(os.path.join(self.RProot, 'FLUIDS', '*.FLD')):
+            FLD = os.path.split(FLDpath)[1].split('.')[0]
+            hash_ = None
+            for line in open(FLDpath).readlines():
+                if 'Hash' in line:
+                    hash_ = line.split('!')[0].strip()
+                    break
+            for line in open(FLDpath).readlines():
+                if 'CAS' in line:
+                    o[hash_] = line.split('!')[0].strip()
+                    break
+        return o
+
+    def get_RPlookup(self):
+        o = {}
+        for FLDpath in glob.glob(os.path.join(self.RProot, 'FLUIDS', '*.FLD')):
+            FLD = os.path.split(FLDpath)[1].split('.')[0]
+            hash_ = None
+            for line in open(FLDpath).readlines():
+                if 'Hash' in line:
+                    hash_ = line.split('!')[0].strip()
+                    break
+            o[hash_] = FLD
+        return o
+
+    def get_binary_interaction(self):
+        BIP = []
+        iBNC = lines_equals("BNC", self.lines)[0]
+        iend = iBNC
+        while iend < iBNC + 10000:
+            if self.lines[iend].strip() == '':
+                break
+            else:
+                iend += 1
+        for chunk in '\n'.join(self.lines[iBNC+1:iend]).split('!\n'):
+            if all([line.strip().startswith('?') or not line.strip() for line in chunk.split('\n')]):
+                continue
+            else:
+                chunklines = chunk.split('\n')
+                Name1, Name2 = chunklines[0][1::].split('[')[0].strip().split('/')
+                ilastcomment = lines_starts_with('?', chunklines)[-1]
+                refrow = chunklines[1:ilastcomment+1]
+                hash1, hash2 = [el.strip() for el in chunklines[ilastcomment+1].split('/')]
+                def to_float(s):
+                    try:
+                        return float(s)
+                    except:
+                        return s
+                model, betaT, gammaT, betaV, gammaV, Fij = [to_float(el) for el in chunklines[ilastcomment+2].split(' ') if el][0:6]
+                try:
+                    BIP.append(dict(
+                        betaT=betaT,
+                        gammaT=gammaT,
+                        betaV=betaV,
+                        gammaV=gammaV,
+                        F=Fij,
+                        BibTeX='?',
+                        Name1=self.RPlookup[hash1],
+                        Name2=self.RPlookup[hash2],
+                        CAS1=self.CASlookup[hash1],
+                        CAS2=self.CASlookup[hash2],
+                        function=model
+                    ))
+                except KeyError as ke:
+                    print(ke)
+        return BIP
+
+    def get_departure_functions(self):
+        iMXM = lines_starts_with("#MXM", self.lines)
+        departure_functions = []
+        for istart in iMXM:
+            iend = istart
+            while iend < istart + 30:
+                if self.lines[iend].strip() == '':
+                    break
+                else:
+                    iend += 1
+            blocklines = self.lines[istart:iend]
+            code = blocklines[1].split(' ')[0]
+            if code in ['XR0','LIN','LJ6','TR1']:
+                continue
+            istart = lines_contains('Descriptors for ', blocklines)[0] + 2 # index of row with spec
+            specnumbers = [int(el) for el in blocklines[istart].split("!")[0].split(' ') if el]
+            Npoly, Mpoly, dummy, Nspecial, Mspecial, NGaussian, MGaussian = specnumbers[0:7]
+            def split_line(line):
+                return [float(el) for el in line.split('!')[0].split()]
+
+            if Nspecial > 0:
+                # These GERG terms are combinations of polynomial and special terms
+                Nlines = Npoly + Nspecial
+                if Mpoly == 4:
+                    blockpoly = blocklines[istart+1 : istart+1+Npoly+1]
+                    npoly, tpoly, dpoly, lpoly = zip(*[split_line(line) for line in blockpoly])
+                else:
+                    if Mpoly != 0:
+                        raise ValueError(Mpoly)
+
+                if Mspecial == 7:
+                    blockspe = blocklines[istart+1+Npoly : istart+1+Npoly+Nspecial+1]
+                    nspe, tspe, dspe, eta, beta, gamma, epsilon  = zip(*[split_line(line) for line in blockspe])
+                else:
+                    nspe = [0.0]*Nspecial
+                    tspe = [0.0]*Nspecial
+                    dspe = [0.0]*Nspecial
+                    eta = [0.0]*Nspecial
+                    beta = [0.0]*Nspecial
+                    gamma = [0.0]*Nspecial
+                    epsilon = [0.0]*Nspecial
+                    if Mspecial != 0:
+                        raise ValueError(Mspecial)
+
+                departure_functions.append(dict(
+                    type='GERG-2008',
+                    n = list(npoly) + list(nspe),
+                    t = list(tpoly) + list(tspe),
+                    d = list(dpoly) + list(dspe),
+                    l = list(lpoly) + [0.0]*Nspecial,
+                    eta = [0.0]*Npoly + list(eta),
+                    beta = [0.0]*Npoly + list(beta),
+                    gamma = [0.0]*Npoly + list(gamma),
+                    epsilon = [0.0]*Npoly + list(epsilon),
+                    Npower=Npoly,
+                    Name=code,
+                    aliases=[],
+                    BibTeX='??'
+                ))
+
+            else:
+                # Polynomial and Gaussian terms
+                Nlines = Npoly + NGaussian
+                if Mpoly == 4:
+                    blockpoly = blocklines[istart+1 : istart+1+Npoly+1]
+                    npoly, tpoly, dpoly, lpoly = zip(*[split_line(line) for line in blockpoly])
+                else:
+                    if Mpoly != 0:
+                        raise ValueError(Mpoly)
+
+                if MGaussian == 12:
+                    blockgau = blocklines[istart+1+Npoly : istart+1+Npoly+NGaussian+1]
+                    ngau, tgau, dgau, dum1gau, dum2gau, dum3gau, eta, beta, gamma, epsilon, dum3, dum4  = zip(*[split_line(line) for line in blockgau])
+                else:
+                    ngau = [0.0]*NGaussian
+                    tgau = [0.0]*NGaussian
+                    dgau = [0.0]*NGaussian
+                    eta = [0.0]*NGaussian
+                    beta = [0.0]*NGaussian
+                    gamma = [0.0]*NGaussian
+                    epsilon = [0.0]*NGaussian
+                    if MGaussian != 0:
+                        raise ValueError(MGaussian)
+
+                departure_functions.append(dict(
+                    type='Exponential',
+                    n=list(npoly) + list(ngau),
+                    t=list(tpoly) + list(tgau),
+                    d=list(dpoly) + list(dgau),
+                    l=list(lpoly) + [0.0]*NGaussian,
+                    eta=[0.0]*Npoly + list(eta),
+                    beta=[0.0]*Npoly + list(beta),
+                    gamma=[0.0]*Npoly + list(gamma),
+                    epsilon=[0.0]*Npoly + list(epsilon),
+                    Npower=Npoly,
+                    Name=code,
+                    aliases=[],
+                    BibTeX='??'
+                ))
+
+        return departure_functions
+
+    def write(self, *, base):
+        with open(base + '/mixture_departure_functions.json','w') as fp:
+            fp.write(json.dumps(self.dep, indent=2))
+        with open(base + '/mixture_binary_interaction.json','w') as fp:
+            fp.write(json.dumps(self.BIP, indent=2))
 
 HMX_header = """HMX               !Mnemonic for mixture model, must match hfmix on call to SETUP.
 4                 !Version number
@@ -610,7 +833,31 @@ class HMXBuilder:
     def get(self):
         return self.out
 
+def to_teqp(RProot, outroot):
+    os.makedirs(os.path.join(outroot,'dev','mixtures'), exist_ok=True)
+    os.makedirs(os.path.join(outroot,'dev','fluids'), exist_ok=True)
+    hmx = HMXDeconstructor(RProot+'/FLUIDS/HMX.BNC', RProot)
+    hmx.write(base=outroot+'/dev/mixtures')
+    for fld in glob.glob(RProot+'/FLUIDS/*.FLD'):
+        name = os.path.split(fld)[1].split('.')[0]
+        try:
+            FLD = FLDDeconstructor(fld).write_JSON(outroot+f'/dev/fluids/{name}.json')
+        except:
+            pass
+
+def test_CoolProp(root):
+    CP.set_config_bool(CP.OVERWRITE_FLUIDS, True)
+    for path in glob.glob(os.path.join(root,'dev','fluids','*.json')):
+        FLD = os.path.split(path)[1].split('.')[0]
+        CP.add_fluids_as_JSON('HEOS', open(path).read())
+        AS = CP.AbstractState('HEOS', FLD)
+    CP.set_departure_functions(open(root+'/dev/mixtures/mixture_departure_functions.json').read())
+    CP.set_interaction_parameters(open(root+'/dev/mixtures/mixture_binary_interaction.json').read())
+
 if __name__ == '__main__':
+    RProot = os.getenv('RPPREFIX')
+    to_teqp(RProot, 'teqp')
+    test_CoolProp('teqp')
 
     import ctREFPROP.ctREFPROP as c, os
     RP = c.REFPROPFunctionLibrary(os.environ['RPPREFIX'])
