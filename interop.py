@@ -6,6 +6,7 @@ import os
 import math
 import hashlib
 
+import numpy as np
 import CoolProp.CoolProp as CP
 
 def lines_starts_with(s, lines, *, start_index=0):
@@ -586,15 +587,16 @@ class HMXDeconstructor:
                 # These GERG terms are combinations of polynomial and special terms
                 Nlines = Npoly + Nspecial
                 if Mpoly == 4:
-                    blockpoly = blocklines[istart+1 : istart+1+Npoly+1]
+                    blockpoly = blocklines[istart+1:istart+1+Npoly]
                     npoly, tpoly, dpoly, lpoly = zip(*[split_line(line) for line in blockpoly])
+                    assert(len(npoly)==Npoly)
                 else:
                     if Mpoly != 0:
                         raise ValueError(Mpoly)
 
                 if Mspecial == 7:
-                    blockspe = blocklines[istart+1+Npoly : istart+1+Npoly+Nspecial+1]
-                    nspe, tspe, dspe, eta, beta, gamma, epsilon  = zip(*[split_line(line) for line in blockspe])
+                    blockspe = blocklines[istart+1+Npoly: istart+1+Npoly+Nspecial]
+                    nspe, tspe, dspe, eta, epsilon, beta, gamma  = zip(*[split_line(line) for line in blockspe])
                 else:
                     nspe = [0.0]*Nspecial
                     tspe = [0.0]*Nspecial
@@ -626,14 +628,14 @@ class HMXDeconstructor:
                 # Polynomial and Gaussian terms
                 Nlines = Npoly + NGaussian
                 if Mpoly == 4:
-                    blockpoly = blocklines[istart+1 : istart+1+Npoly+1]
+                    blockpoly = blocklines[istart+1 : istart+1+Npoly]
                     npoly, tpoly, dpoly, lpoly = zip(*[split_line(line) for line in blockpoly])
                 else:
                     if Mpoly != 0:
                         raise ValueError(Mpoly)
 
                 if MGaussian == 12:
-                    blockgau = blocklines[istart+1+Npoly : istart+1+Npoly+NGaussian+1]
+                    blockgau = blocklines[istart+1+Npoly:istart+1+Npoly+NGaussian+1]
                     ngau, tgau, dgau, dum1gau, dum2gau, dum3gau, eta, beta, gamma, epsilon, dum3, dum4  = zip(*[split_line(line) for line in blockgau])
                 else:
                     ngau = [0.0]*NGaussian
@@ -652,8 +654,8 @@ class HMXDeconstructor:
                     t=list(tpoly) + list(tgau),
                     d=list(dpoly) + list(dgau),
                     l=list(lpoly) + [0.0]*NGaussian,
-                    eta=[0.0]*Npoly + list(eta),
-                    beta=[0.0]*Npoly + list(beta),
+                    eta=[0.0]*Npoly + (-np.array(eta)).tolist(),
+                    beta=[0.0]*Npoly + (-np.array(beta)).tolist(),
                     gamma=[0.0]*Npoly + list(gamma),
                     epsilon=[0.0]*Npoly + list(epsilon),
                     Npower=Npoly,
