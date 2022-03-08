@@ -273,26 +273,18 @@ class FLDDeconstructor:
                 else:
                     raise IndexError()
             elif name == 'ai*tau**ti':
-                a1 = None # constant term
-                a2 = None # term multiplying tau
-                if len(lines) != 2:
-                    raise ValueError("Don't understand what to do when more than two terms")
+                # This is a combination of the IdealGasHelmholtzLogTau and IdealGasHelmholtzLogTau terms in CoolProp
+                n,t = [],[]
                 for line in lines:
                     els = [el.strip() for el in line.split(' ') if el]
                     ai = float(els[0])
                     ti = float(els[1])
-                    if ti == 0.0: 
-                        a1 = ai
-                    elif ti == 1.0: 
-                        a2 = ai
-                    else:
-                        raise ValueError(els, ai, ti)
-                assert(a1 is not None)
-                assert(a2 is not None)
+                    n.append(ai)
+                    t.append(ti)
                 alpha0.append({
-                    "a1": a1,
-                    "a2": a2,
-                    "type": "IdealGasHelmholtzLead"
+                    "n": n,
+                    "t": t,
+                    "type": "IdealGasHelmholtzPower"
                 })
             elif name == 'ai*log(1-exp(bi*tau))':
                 n, t = [],[]
