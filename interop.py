@@ -371,11 +371,25 @@ class FLDDeconstructor:
                     raise ValueError()
 
             elif name == 'Gaussian':
-                n,t,d,eta,beta,gamma,epsilon = [],[],[],[],[],[],[]
-                assert(Ncoefperterm==12)
-                for line in lines:
-                    els = [el.strip() for el in line.split(' ') if el]
-                    if all([float(el)==0 for el in els[9:12]]):
+
+                def is_normal_gaussian(lines):
+                    for line in lines:
+                        els = [el.strip() for el in line.split(' ') if el]
+                        if not (all([float(el)==0 for el in els[9:12]]) and all([float(el)==2.0 for el in els[3:5]])):
+                            return False
+                    return True
+
+                def is_R125_gaussian(lines):
+                    for line in lines:
+                        els = [el.strip() for el in line.split(' ') if el]
+                        if not (all([float(el)==0 for el in els[9:12]]) and all([float(el)==-1.0 for el in els[5:7]])):
+                            return False
+                    return True
+
+                if is_normal_gaussian(lines):
+                    n,t,d,eta,beta,gamma,epsilon = [],[],[],[],[],[],[]
+                    for line in lines:
+                        els = [el.strip() for el in line.split(' ') if el]
                         # Normal gaussian term if last three placeholders are zero
                         ni,ti,di,ph1,ph2,negetai,negbetai,gammai,epsiloni,ph3,ph4,ph5 = [float(el) for el in els[0:12]]
                         n.append(ni)
@@ -385,21 +399,24 @@ class FLDDeconstructor:
                         beta.append(-negbetai)
                         gamma.append(gammai)
                         epsilon.append(epsiloni)
-                    else:
-                        raise NotImplementedError("No non-analytic yet")
-                        # Non-analytic if last three placeholders are non-zero
-                        ni,ti,di,ph1,ph2,negetai,negbetai,gammai,epsiloni,ph3,ph4,ph5 = [float(el) for el in els[0:12]]
+                    alphar.append({"n": n, "t": t, "d": d, 
+                               "eta": eta, "beta": beta, "gamma": gamma, "epsilon": epsilon,
+                               "type": "ResidualHelmholtzGaussian"})
+                elif is_R125_gaussian(lines):
+                    n,t,d,l,m = [],[],[],[],[]
+                    for line in lines:
+                        els = [el.strip() for el in line.split(' ') if el]
+                        # Normal gaussian term if last three placeholders are zero
+                        ni,ti,di,li,mi,ph1,ph2,ph3,ph4,ph5,ph6,ph7 = [float(el) for el in els[0:12]]
                         n.append(ni)
                         t.append(ti)
                         d.append(di)
-                        eta.append(-negetai)
-                        beta.append(-negbetai)
-                        gamma.append(gammai)
-                        epsilon.append(epsiloni)
-
-                alphar.append({"n": n, "t": t, "d": d, 
-                               "eta": eta, "beta": beta, "gamma": gamma, "epsilon": epsilon,
-                               "type": "ResidualHelmholtzGaussian"})
+                        l.append(li)
+                        m.append(mi)
+                    alphar.append({"n": n, "t": t, "d": d, "l": l, "m": m, "type": "ResidualHelmholtzLemmon2005"})
+                else:
+                    raise NotImplementedError("No non-analytic yet")
+                
             else:
                 raise ValueError("I don't yet understand:"+name)
                 
