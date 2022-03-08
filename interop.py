@@ -147,6 +147,8 @@ class FLDDeconstructor:
     def formula_from_inchi(self):
         """ Parse the standard inchi string to extract the chemical formula in Hill order """
         stdinchistring = self.get_keyed_line(self.lines, '!Standard InChI String', lambda x: x)[0]
+        if '/' not in stdinchistring:
+            raise ValueError(f'{stdinchistring} is not a valid standard InChI key')
         formula = stdinchistring.split('/')[1]
         matches = re.findall(r'[A-Z][a-z]*[0-9]*', formula)
         assert(sum([len(m) for m in matches]) == len(formula)) # make sure all parts are matched
