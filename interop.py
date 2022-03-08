@@ -688,7 +688,7 @@ class HMXDeconstructor:
     def write(self, *, base):
         with open(base + '/mixture_departure_functions.json','w') as fp:
             fp.write(json.dumps(self.dep, indent=2))
-        with open(base + '/mixture_binary_interaction.json','w') as fp:
+        with open(base + '/mixture_binary_pairs.json','w') as fp:
             fp.write(json.dumps(self.BIP, indent=2))
 
 HMX_header = """HMX               !Mnemonic for mixture model, must match hfmix on call to SETUP.
@@ -704,8 +704,7 @@ BNC
 ? KWi:  (i = 1,2,3,...,A,B,...)  --->  Kunz-Wagner mixing rules
 ?   model     BetaT     GammaT    BetaV     GammaV    Fij      not used
 ?
-!
-"""
+!"""
 
 HMX_footer = """
 @END
@@ -713,12 +712,13 @@ c        1         2         3         4         5         6         7         8
 c2345678901234567890123456789012345678901234567890123456789012345678901234567890
 """
 
-BIN_template = """?{name1}/{name2}                                            [X/X]
+BIN_template = """
+?{name1}/{name2}                        [{name1}/{name2}]
 ?FITTED {annotation}
   {hash1}/{hash2}
     {model}     {betaT:14.11f} {gammaT:14.11f} {betaV:14.11f} {gammaV:14.11f} {Fij:14.11f}  0.             0. 0. 0. 0. 0. 0.
-    TC5    261.35575      -23.712303      47.134844       0.             0.             0.             0. 0. 0. 0. 0. 0.
-    VC5     -1.2463518      2.4401771     -1.1787725      0.             0.             0.             0. 0. 0. 0. 0. 0.
+    TC5    0.0      0.0     0.0       0.             0.             0.             0. 0. 0. 0. 0. 0.
+    VC5    0.0      0.0     0.0       0.             0.             0.             0. 0. 0. 0. 0. 0.
 !"""
 
 MODEL_template = """#MXM              !Mixture model specification
@@ -741,19 +741,22 @@ class HMXBuilder:
             function_names = set([el['Name'] for el in jdep])
             return function_names
         function_names = get_function_names()
-        if len(function_names) > 10:
-            raise ValueError("Max of 10 functions allowed")
-        RP_function_names = {f:f'BA{i:1d}'.replace(' ','0') for i,f in enumerate(function_names)}
+        if len(function_names) > 100:
+            raise ValueError("Max of 100 functions allowed")
+        RP_function_names = {f:f'B{i:2d}'.replace(' ','0') for i,f in enumerate(function_names)}
         def get_hash(CAS, name):
             try:
                 # Use CoolProp to obtain the standard inchi key
                 AS = CP.AbstractState('HEOS', CAS)
                 StdInChIkey = CP.get_fluid_param_string(CAS, 'INCHIKEY')
+                uid = hashlib.sha256(StdInChIkey.encode('UTF-8')).hexdigest()[2:9] + '0'
             except ValueError:
                 # Use REFPROP to do so
+                import ctREFPROP.ctREFPROP as c
+                RP = c.REFPROPFunctionLibrary(os.getenv('RPPREFIX'))
                 r = RP.REFPROPdll(name,'','HASH',RP.MOLAR_BASE_SI,0,0,0,0,[1.0])
-                StdInChIkey = r.hUnits
-            uid = hashlib.sha256(StdInChIkey.encode('UTF-8')).hexdigest()[2:9] + '0'
+                assert(r.ierr == 0)
+                uid = r.hUnits
             return uid
 
         out = HMX_header
@@ -764,7 +767,10 @@ class HMXBuilder:
             if 'function' not in el:
                 RP_function_number = 'BA0'
             else:
-                RP_function_number = RP_function_names[el['function']]
+                if el['function'] == 'XR0':
+                    RP_function_number = 'XR0'
+                else:
+                    RP_function_number = RP_function_names[el['function']]
             if 'xi' in el and 'zeta' in el:
                 # convert values to gammaT and gammaV
                 # yadda...
@@ -842,8 +848,28 @@ class HMXBuilder:
                         rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} {eta[i]} {epsilon[i]} {beta[i]} {gamma[i]} ')
                         if i == Nexp:
                             rows[-1] += '! n(i),t(i),d(i),eta(i),epsilon(i),beta(i),gamma(i) in term n_i*tau^t_i*delta^d_i*exp(-eta*(delta-epsilon)^2-beta*(delta-gamma))'
+
+            elif el['type'] == 'Gaussian+Exponential':
+                # print(el)
+                Nexp = el['Npower']
+                NGaussian = len(el['n'])-Nexp
+                Ntermsexp = 4
+                
+                n, t, d, l, eta, epsilon, beta, gamma = el['n'], el['t'], el['d'], el['l'], el['eta'], el['epsilon'], el['beta'], el['gamma']
+                rows = []
+                if Nexp > 0:
+                    for i in range(Nexp):
+                        rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} {l[i]:0.1f} ')
+                        if i == 0:
+                            rows[-1] += '! n(i),t(i),d(i),l(i) in term n_i*tau^t_i*delta^d_i*exp(-sgn(l_i)*delta^l_i)'
+                if NGaussian > 0:
+                    for i in range(Nexp,len(t)):
+                        rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} {eta[i]} {epsilon[i]} {beta[i]} {gamma[i]} ')
+                        if i == Nexp:
+                            rows[-1] += '! n(i),t(i),d(i),etsa(i),epsilon(i),beta(i),gamma(i) in term n_i*tau^t_i*delta^d_i*exp(-eta*(delta-epsilon)^2-beta*(tau-gamma)^2)'
             else:
-                print(el['type']+'"""""""""""""""""""""""""""""')
+                raise KeyError(el['type'])
+                
             out += MODEL_template.format(**locals())
             out += '\n'.join(rows) + '\n\n'
 
@@ -863,7 +889,9 @@ def to_teqp(RProot, outroot):
         name = os.path.split(fld)[1].split('.')[0]
         try:
             FLD = FLDDeconstructor(fld).write_JSON(outroot+f'/dev/fluids/{name}.json')
-        except:
+        except BaseException as BE:
+            print(fld, BE)
+            # raise
             pass
 
 def test_CoolProp(root):
@@ -873,21 +901,9 @@ def test_CoolProp(root):
         CP.add_fluids_as_JSON('HEOS', open(path).read())
         AS = CP.AbstractState('HEOS', FLD)
     CP.set_departure_functions(open(root+'/dev/mixtures/mixture_departure_functions.json').read())
-    CP.set_interaction_parameters(open(root+'/dev/mixtures/mixture_binary_interaction.json').read())
+    CP.set_interaction_parameters(open(root+'/dev/mixtures/mixture_binary_pairs.json').read())
 
-if __name__ == '__main__':
-    RProot = os.getenv('RPPREFIX')
-    to_teqp(RProot, 'teqp')
-    test_CoolProp('teqp')
-
-    import ctREFPROP.ctREFPROP as c, os
-    RP = c.REFPROPFunctionLibrary(os.environ['RPPREFIX'])
-    print(RP.RPVersion())
-
-    for FLD in '3METHYLPENTANE','23DIMETHYLBUTANE','22DIMETHYLBUTANE':
-        FLDDeconstructor(f'{FLD}.FLD').write_JSON(f'{FLD}.json')
-    quit()
-
+def get_all_ancillaries():
     ancillaries = {}
     for fld in glob.glob('C:/Program Files (x86)/REFPROP/FLUIDS/*.FLD'):
         name = os.path.split(fld)[1].split('.')[0]
@@ -901,3 +917,12 @@ if __name__ == '__main__':
 
     with open('all_ancillaries.json','w') as fp:
         fp.write(json.dumps(ancillaries, indent=2))
+
+if __name__ == '__main__':
+    RProot = os.getenv('RPPREFIX')
+    to_teqp(RProot, 'teqp')
+    test_CoolProp('teqp')
+
+    import ctREFPROP.ctREFPROP as c, os
+    RP = c.REFPROPFunctionLibrary(os.environ['RPPREFIX'])
+    print(RP.RPVersion())
