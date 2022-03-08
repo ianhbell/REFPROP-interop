@@ -156,7 +156,7 @@ class FLDDeconstructor:
         for match in matches:
             def replacer(m):
                 N = len(m.groups())
-                print(m, N)
+                # print(m, N)
                 if N == 0:
                     return m.group(0)+'_{1}'
                 else:
@@ -315,7 +315,7 @@ class FLDDeconstructor:
         # print(''.join(block))
         kind = block[1].split(' ')[0]
         if kind != 'FEQ':
-            return None
+            raise ValueError(f'Kind of EOS [{kind}] is not supported; only valid options are: {{FEQ}}')
 
         def get_keyed_line(key,conv,*,alias=None):
             return self.get_keyed_line(block, key, conv, alias=alias)
