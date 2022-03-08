@@ -568,6 +568,23 @@ class HMXDeconstructor:
     def get_departure_functions(self):
         iMXM = lines_starts_with("#MXM", self.lines)
         departure_functions = []
+
+        departure_functions.append(dict(
+            type='GERG-2008',
+            n = [],
+            t = [],
+            d = [],
+            l = [],
+            eta = [],
+            beta = [],
+            gamma = [],
+            epsilon = [],
+            Npower=0,
+            Name='XR0',
+            aliases=[],
+            BibTeX='??'
+        ))
+
         for istart in iMXM:
             iend = istart
             while iend < istart + 30:
