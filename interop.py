@@ -170,10 +170,18 @@ class FLDDeconstructor:
 
     def get_info(self):
         CHEMSPIDER_ID = -1
+        i = lines_contains('!Short name', self.lines)
+        short_name = self.lines[i[0]].split('!')[0].strip()
         name = os.path.split(self.path)[1].split('.')[0]
+
+        i = lines_contains('!Full name', self.lines)
+        full_name = self.lines[i[0]].split('!')[0].strip()
+
+        name = os.path.split(self.path)[1].split('.')[0]
+        aliases = [short_name, short_name.lower(), full_name, full_name.lower(), full_name.replace(' ','').upper(), short_name.replace(' ','').upper()]
         return {
             "2DPNG_URL": f"http://www.chemspider.com/ImagesHandler.ashx?id={CHEMSPIDER_ID}",
-            "ALIASES": [],
+            "ALIASES": list(set(aliases)),
             "CAS": self.get_keyed_line(self.lines, '!CAS number', lambda x: x)[0],
             "CHEMSPIDER_ID": CHEMSPIDER_ID,
             "ENVIRONMENTAL": {
