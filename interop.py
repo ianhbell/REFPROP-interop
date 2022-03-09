@@ -335,14 +335,15 @@ class FLDDeconstructor:
         def chunkify(y, *, n):
             return [y[i*n:(i+1)*n] for i in range((len(y)+ n - 1)//n)]
         pairs = chunkify(terms, n=2)
-        names = ['Polynomial','Gaussian','Hmm','Hmm','Hmm','Hmm']
+        names = ['Polynomial','Gaussian','Gao','Hmm','Hmm','Hmm']
         alphar = []
         i = lines_contains('!# terms and # coefs/term', block)[0]+1
         for name, pair in zip(names, pairs):
+
             Nterms, Ncoefperterm = pair
-            lines = block[i:i+Nterms]
             if Ncoefperterm == 0:
                 continue
+            lines = block[i:i+Nterms]
             if name == 'Polynomial':
                 if Ncoefperterm == 4:
                     n,t,d,l = [],[],[],[]
@@ -449,6 +450,22 @@ class FLDDeconstructor:
                         add_nonanalytic(lines[NGaussian::])
                     else:
                         raise ValueError("I don't yet understand this kind of Gaussian:"+str(lines))
+            elif name == 'Gao':
+                n,t,d,eta,beta,gamma,epsilon,b = [],[],[],[],[],[],[],[]
+                for line in lines:
+                    els = [el.strip() for el in line.split(' ') if el]
+                    ni,ti,di,ph1,ph2,etai,betai,gammai,epsiloni,bi,ph4,ph5 = [float(el) for el in els[0:12]]
+                    n.append(ni)
+                    t.append(ti)
+                    d.append(di)
+                    eta.append(etai)
+                    beta.append(betai)
+                    gamma.append(gammai)
+                    epsilon.append(epsiloni)
+                    b.append(bi)
+                alphar.append({"n": n, "t": t, "d": d, 
+                           "eta": eta, "beta": beta, "gamma": gamma, "epsilon": epsilon, "b": b,
+                           "type": "ResidualHelmholtzGaoB"})
             else:
                 raise ValueError("I don't yet understand:"+name)
                 
