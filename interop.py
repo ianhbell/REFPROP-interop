@@ -612,7 +612,16 @@ class HMXDeconstructor:
                         return float(s)
                     except:
                         return s
-                model, betaT, gammaT, betaV, gammaV, Fij = [to_float(el) for el in chunklines[ilastcomment+2].split(' ') if el][0:6]
+                # start at the bottom and work backwards to find the last mixture model definition
+                for irow in reversed(range(len(chunklines)-1)):
+                    model, betaT, gammaT, betaV, gammaV, Fij = [to_float(el) for el in chunklines[irow].split(' ') if el][0:6]
+                    if model in (['PR1','ST1','TRN'] + [f'TC{i}' for i in range(1,8)] + [f'VC{i}' for i in range(1,8)]):
+                        # print('XX', chunklines[irow])
+                        pass
+                    else:
+                        # print('  ', chunklines[irow])
+                        break
+
                 try:
                     BIP.append(dict(
                         betaT=betaT,
@@ -660,13 +669,13 @@ class HMXDeconstructor:
                     iend += 1
             blocklines = self.lines[istart:iend]
             code = blocklines[1].split(' ')[0]
-            if code in ['XR0','LIN','LJ6','TR1']:
+            if code in ['XR0','LIN','TR1']:
                 continue
             istart = lines_contains('Descriptors for ', blocklines)[0] + 2 # index of row with spec
             specnumbers = [int(el) for el in blocklines[istart].split("!")[0].split(' ') if el]
             Npoly, Mpoly, dummy, Nspecial, Mspecial, NGaussian, MGaussian = specnumbers[0:7]
             def split_line(line):
-                return [float(el) for el in line.split('!')[0].split()]
+                return [float(el.replace('d','e')) for el in line.split('!')[0].split()]
 
             if Nspecial > 0:
                 # These GERG terms are combinations of polynomial and special terms
