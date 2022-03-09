@@ -216,7 +216,7 @@ class FLDDeconstructor:
         else:
             raise KeyError(anc['type'])
 
-    def check_ancillaries(self, ancillaries, name, T, backend = 'REFPROP'):
+    def check_ancillaries(self, anc, name, T, backend = 'REFPROP'):
         AS = CP.AbstractState(backend, name)
         AS.update(CP.QT_INPUTS, 0, T)
         rhoL = AS.rhomolar()
