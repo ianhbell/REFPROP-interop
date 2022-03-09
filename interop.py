@@ -386,11 +386,20 @@ class FLDDeconstructor:
                             return False
                     return True
 
-                if is_normal_gaussian(lines):
+                def is_nonanalytic_gaussian(lines):
+                    numgaussian = 0; numNA = 0
+                    for line in lines:
+                        els = [el.strip() for el in line.split(' ') if el]
+                        if all([float(el)==0 for el in els[9:12]]) and all([float(el)==2.0 for el in els[3:5]]):
+                            numgaussian += 1
+                        if all([float(el)!=0 for el in els[9:12]]) and all([float(el)==2.0 for el in els[3:5]]):
+                            numNA += 1
+                    return (numNA > 0, numgaussian, numNA)
+
+                def add_normal_gaussian(lines):
                     n,t,d,eta,beta,gamma,epsilon = [],[],[],[],[],[],[]
                     for line in lines:
                         els = [el.strip() for el in line.split(' ') if el]
-                        # Normal gaussian term if last three placeholders are zero
                         ni,ti,di,ph1,ph2,negetai,negbetai,gammai,epsiloni,ph3,ph4,ph5 = [float(el) for el in els[0:12]]
                         n.append(ni)
                         t.append(ti)
@@ -402,6 +411,25 @@ class FLDDeconstructor:
                     alphar.append({"n": n, "t": t, "d": d, 
                                "eta": eta, "beta": beta, "gamma": gamma, "epsilon": epsilon,
                                "type": "ResidualHelmholtzGaussian"})
+
+                def add_nonanalytic(lines):
+                    n,a,b,beta,A,B,C,D = [],[],[],[],[],[],[],[]
+                    for line in lines:
+                        els = [el.strip() for el in line.split(' ') if el]
+                        ni,ph1,ph2,ph3,ph4,bi,betai,Ai,Ci,Di,Bi,ai = [float(el) for el in els[0:12]]
+                        n.append(ni)
+                        a.append(ai)
+                        b.append(bi)
+                        beta.append(betai)
+                        A.append(Ai)
+                        B.append(Bi)
+                        C.append(Ci)
+                        D.append(Di)
+                    alphar.append({"n": n, "b": b, "a": a, "b": b, "A": A, "B": B, "C": C, "D": D, "beta": beta,
+                               "type": "ResidualHelmholtzNonAnalytic"})
+
+                if is_normal_gaussian(lines):
+                    add_normal_gaussian(lines)
                 elif is_R125_gaussian(lines):
                     n,t,d,l,m = [],[],[],[],[]
                     for line in lines:
@@ -415,8 +443,12 @@ class FLDDeconstructor:
                         m.append(mi)
                     alphar.append({"n": n, "t": t, "d": d, "l": l, "m": m, "type": "ResidualHelmholtzLemmon2005"})
                 else:
-                    raise NotImplementedError("No non-analytic yet")
-                
+                    isnonanalytic, NGaussian, NNA = is_nonanalytic_gaussian(lines)
+                    if isnonanalytic:
+                        add_normal_gaussian(lines[0:NGaussian])
+                        add_nonanalytic(lines[NGaussian::])
+                    else:
+                        raise ValueError("I don't yet understand this kind of Gaussian:"+str(lines))
             else:
                 raise ValueError("I don't yet understand:"+name)
                 
