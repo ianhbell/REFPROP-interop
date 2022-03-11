@@ -331,7 +331,7 @@ class FLDDeconstructor:
         return alpha0
 
     def get_EOS(self):
-        block = self.get_block('#EOS', r'^\s*[\n\r]') # end of block is a line with only whitespace and terminated with a newline, or a carraige return
+        block = self.get_block('#EOS', r'^\s*[\n\r]') # end of block is a line with only whitespace and terminated with a newline, or a carriage return
         block = self.strip_commented(block)
         indices = lines_contains('eta      beta    gamma   epsilon', block)
         if indices:
