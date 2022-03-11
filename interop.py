@@ -203,6 +203,30 @@ class FLDDeconstructor:
             "SMILES": "?"
         }
 
+    def get_critical_state(self):
+
+        i = lines_contains('!Critical temperature [K]', self.lines)
+        Tc = float(self.lines[i[0]].split('!')[0].strip())
+
+        i = lines_contains('!Critical pressure [kPa]', self.lines)
+        pc = float(self.lines[i[0]].split('!')[0].strip())
+
+        i = lines_contains('!Critical density [mol/L]', self.lines)
+        rhoc_moldm3 = float(self.lines[i[0]].split('!')[0].strip())
+        
+        return {
+              "T": Tc,
+              "T_units": "K",
+              "hmolar": -99999999999,
+              "hmolar_units": "J/mol",
+              "p": pc,
+              "p_units": "Pa",
+              "rhomolar": rhoc_moldm3*1e3,
+              "rhomolar_units": "mol/m^3",
+              "smolar": 999999999999999,
+              "smolar_units": "J/mol/K"
+        }
+
     def ancillary_evaluator(self, anc, T):
         T_r = anc['T_r']
         theta = 1-T/T_r
@@ -329,7 +353,8 @@ class FLDDeconstructor:
         pt_kPa = get_keyed_line('!Pressure at triple point',float)[0]
         pmax_kPa = get_keyed_line('!Upper pressure limit',float)[0]
         # Reducing parameters
-        Tr, pc_kPa, rhor_moldm3 = get_keyed_line('!Tc [K], pc [kPa], rhoc [mol/L]',float)
+        _Tr, pc_kPa, _rhoc_moldm3 = get_keyed_line('!Tc [K], pc [kPa], rhoc [mol/L]',float)
+        Tr, rhor_moldm3 = get_keyed_line('!Reducing parameters [K, mol/L]',float)
         # Term specification
         terms = get_keyed_line(' !# terms and # coefs/term',int)
         def chunkify(y, *, n):
@@ -481,37 +506,37 @@ class FLDDeconstructor:
             "reducing": {
               "T": Tr,
               "T_units": "K",
-              "hmolar": -172.39792903434846,
+              "hmolar": -99999999999,
               "hmolar_units": "J/mol",
-              "p": pr,
+              "p": pc_kPa,
               "p_units": "Pa",
               "rhomolar": rhor_moldm3*1e3,
               "rhomolar_units": "mol/m^3",
-              "smolar": 89.79140692970108,
+              "smolar": 999999999999999,
               "smolar_units": "J/mol/K"
             },
             "sat_min_liquid": {
               "T": Tt,
               "T_units": "K",
-              "hmolar": -4851.143195734251,
+              "hmolar": -999999999999,
               "hmolar_units": "J/mol",
               "p": pt_kPa*1e3,
               "p_units": "Pa",
-              "rhomolar": 35465.24383230989,
+              "rhomolar": 9999999999999999,
               "rhomolar_units": "mol/m^3",
-              "smolar": 53.11037416000078,
+              "smolar": 99999999999999999999,
               "smolar_units": "J/mol/K"
             },
             "sat_min_vapor": {
               "T": Tt,
               "T_units": "K",
-              "hmolar": 1689.054333680143,
+              "hmolar": 9999999999999,
               "hmolar_units": "J/mol",
               "p": pt_kPa*1e3,
               "p_units": "Pa",
-              "rhomolar": 101.4989524639359,
+              "rhomolar": 99999999999999,
               "rhomolar_units": "mol/m^3",
-              "smolar": 131.15006869148877,
+              "smolar": 9999999999999999999,
               "smolar_units": "J/mol/K"
             }
           },
@@ -541,7 +566,7 @@ class FLDDeconstructor:
             'INFO': self.get_info(),
         }
         f['STATES'] = {
-            'critical': f["EOS"][0]['STATES']['reducing'],
+            'critical': self.get_critical_state(),
             'triple_liquid': f["EOS"][0]['STATES']['sat_min_liquid'],
             'triple_vapor': f["EOS"][0]['STATES']['sat_min_vapor']
         }
