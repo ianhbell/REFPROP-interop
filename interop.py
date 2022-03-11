@@ -953,20 +953,23 @@ class HMXBuilder:
                 # print(el)
                 Nexp = el['Npower']
                 NGaussian = len(el['n'])-Nexp
-                Ntermsexp = 4
                 
                 n, t, d, l, eta, epsilon, beta, gamma = el['n'], el['t'], el['d'], el['l'], el['eta'], el['epsilon'], el['beta'], el['gamma']
                 rows = []
                 if Nexp > 0:
+                    Ntermsexp = 4
                     for i in range(Nexp):
                         rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} {l[i]:0.1f} ')
                         if i == 0:
                             rows[-1] += '! n(i),t(i),d(i),l(i) in term n_i*tau^t_i*delta^d_i*exp(-sgn(l_i)*delta^l_i)'
                 if NGaussian > 0:
+                    NtermsGaussian = 12
                     for i in range(Nexp,len(t)):
-                        rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} {eta[i]} {epsilon[i]} {beta[i]} {gamma[i]} ')
+                        negetai = -eta[i]
+                        negbetai = -beta[i]
+                        rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} 2.0 2.0 {negetai} {negbetai} {gamma[i]} {epsilon[i]} 0.0 0.0 0.0 0.0')
                         if i == Nexp:
-                            rows[-1] += '! n(i),t(i),d(i),etsa(i),epsilon(i),beta(i),gamma(i) in term n_i*tau^t_i*delta^d_i*exp(-eta*(delta-epsilon)^2-beta*(tau-gamma)^2)'
+                            rows[-1] += '! n(i),t(i),d(i),_,_,eta(i),beta(i),gamma(i),epsilon(i),_,_,_,_ in term n_i*tau^t_i*delta^d_i*exp(eta*(delta-epsilon)^2+beta*(tau-gamma)^2)'
             else:
                 raise KeyError(el['type'])
                 
