@@ -209,7 +209,7 @@ class FLDDeconstructor:
         Tc = float(self.lines[i[0]].split('!')[0].strip())
 
         i = lines_contains('!Critical pressure [kPa]', self.lines)
-        pc = float(self.lines[i[0]].split('!')[0].strip())
+        pc_kPa = float(self.lines[i[0]].split('!')[0].strip())
 
         i = lines_contains('!Critical density [mol/L]', self.lines)
         rhoc_moldm3 = float(self.lines[i[0]].split('!')[0].strip())
@@ -219,7 +219,7 @@ class FLDDeconstructor:
               "T_units": "K",
               "hmolar": -99999999999,
               "hmolar_units": "J/mol",
-              "p": pc,
+              "p": pc_kPa*1e3,
               "p_units": "Pa",
               "rhomolar": rhoc_moldm3*1e3,
               "rhomolar_units": "mol/m^3",
@@ -508,7 +508,7 @@ class FLDDeconstructor:
               "T_units": "K",
               "hmolar": -99999999999,
               "hmolar_units": "J/mol",
-              "p": pc_kPa,
+              "p": pr,
               "p_units": "Pa",
               "rhomolar": rhor_moldm3*1e3,
               "rhomolar_units": "mol/m^3",
