@@ -603,7 +603,7 @@ class FLDDeconstructor:
             'triple_vapor': f["EOS"][0]['STATES']['sat_min_vapor']
         }
         with open(jsonpath, 'w') as fp:
-            fp.write(json.dumps(f, indent=2))
+            fp.write(json.dumps(f, indent=2, sort_keys=True))
 
 class HMXDeconstructor:
     """ 
