@@ -179,6 +179,12 @@ class FLDDeconstructor:
 
         name = os.path.split(self.path)[1].split('.')[0]
         aliases = [short_name, short_name.lower(), full_name, full_name.lower(), full_name.replace(' ','').upper(), short_name.replace(' ','').upper()]
+        aliases = [alias for alias in aliases if alias != name]
+        
+        StdInChIstr = self.get_keyed_line(self.lines, '!Standard InChI String', lambda x: x)[0]
+        if not StdInChIstr.startswith('InChI='):
+            StdInChIstr = "InChI=" + StdInChIstr
+        
         return {
             "2DPNG_URL": f"http://www.chemspider.com/ImagesHandler.ashx?id={CHEMSPIDER_ID}",
             "ALIASES": list(set(aliases)),
@@ -197,7 +203,7 @@ class FLDDeconstructor:
             },
             "FORMULA": self.formula_from_inchi(),
             "INCHI_KEY": self.get_keyed_line(self.lines, '!Standard InChI Key', lambda x: x)[0],
-            "INCHI_STRING": self.get_keyed_line(self.lines, '!Standard InChI String', lambda x: x)[0],
+            "INCHI_STRING": StdInChIstr,
             "NAME": name,
             "REFPROP_NAME": name,
             "SMILES": "?"
