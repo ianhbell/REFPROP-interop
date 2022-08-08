@@ -371,17 +371,34 @@ class FLDDeconstructor:
         _Tr, pc_kPa, _rhoc_moldm3 = get_keyed_line('!Tc [K], pc [kPa], rhoc [mol/L]',float)
         Tr, rhor_moldm3 = get_keyed_line('!Reducing parameters [K, mol/L]',float)
         # Term specification
-        terms = get_keyed_line(' !# terms and # coefs/term',int)
-        def chunkify(y, *, n):
-            return [y[i*n:(i+1)*n] for i in range((len(y)+ n - 1)//n)]
-        pairs = chunkify(terms, n=2)
-        names = ['Polynomial','Gaussian','Gao','Hmm','Hmm','Hmm']
+        try:
+            terms = get_keyed_line(' !# terms and # coefs/term',int)
+            i0 = lines_contains('!# terms and # coefs/term', block)[0]
+        except KeyError:
+            terms = get_keyed_line(' !First digit: # of normal terms',int)
+            i0 = lines_contains(' !First digit: # of normal terms', block)[0]
+            
+        Npoly, Ncoefpoly, NGaussian, NcoefGaussian, NGao = terms[0:5]
+        assert(sum(terms[5::]) == 0)
+
+        pairs = []
+        names = []
+        if Npoly > 0:
+            names.append('Polynomial')
+            pairs.append((Npoly, Ncoefpoly))
+        if NGaussian > 0:
+            names.append('Gaussian')
+            pairs.append((NGaussian, NcoefGaussian))
+        if NGao > 0:
+            names.append('Gao')
+            pairs.append((NGao, 12))
+
         alphar = []
-        i = lines_contains('!# terms and # coefs/term', block)[0]+1
+        i = i0 + 1
         for name, pair in zip(names, pairs):
 
             Nterms, Ncoefperterm = pair
-            if Ncoefperterm == 0:
+            if Ncoefperterm == 0 and name in ['Polynomial','Gaussian']:
                 continue
             lines = block[i:i+Nterms]
             if name == 'Polynomial':
