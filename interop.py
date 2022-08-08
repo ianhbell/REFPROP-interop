@@ -778,9 +778,12 @@ class HMXDeconstructor:
             else:
                 # Polynomial and Gaussian terms
                 Nlines = Npoly + NGaussian
+                blockpoly = blocklines[istart+1 : istart+1+Npoly]
                 if Mpoly == 4:
-                    blockpoly = blocklines[istart+1 : istart+1+Npoly]
                     npoly, tpoly, dpoly, lpoly = zip(*[split_line(line) for line in blockpoly])
+                elif Mpoly == 3:
+                    npoly, tpoly, dpoly = zip(*[split_line(line) for line in blockpoly])
+                    lpoly = [0.0]*len(dpoly)
                 else:
                     if Mpoly != 0:
                         raise ValueError(Mpoly)
