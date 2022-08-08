@@ -948,7 +948,7 @@ class HMXBuilder:
                     n, t, d, l = el['n'], el['t'], el['d'], el['l']
                     rows = []
                     for i in range(len(t)):
-                        rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} {l[i]:0.1f}')
+                        rows.append(f'{n[i]} {t[i]} {d[i]:0.10f} {l[i]:0.10f}')
                         if i == 0:
                             rows[-1] += f' ! n(i),t(i),d(i),l(i) in term n_i*tau^t_i*delta^d_i*exp(-delta^l_i)'
                 elif Ntermsexp == 3:
@@ -956,7 +956,7 @@ class HMXBuilder:
                     first_row = f'{n[0]} {t[0]} {d[0]:0.1f} ! n(i),t(i),d(i) in term n_i*tau^t_i*delta^d_i'
                     rows = []
                     for i in range(len(t)):
-                        rows.append(f'{n[i]} {t[i]} {d[i]:0.1f}')
+                        rows.append(f'{n[i]} {t[i]} {d[i]:0.10f}')
                         if i == 0:
                             rows[-1] += f' ! n(i),t(i),d(i) in term n_i*tau^t_i*delta^d_i'
                 else:
@@ -975,12 +975,12 @@ class HMXBuilder:
                 rows = []
                 if Nexp > 0:
                     for i in range(Nexp):
-                        rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} ')
+                        rows.append(f'{n[i]} {t[i]} {d[i]:0.10f} ')
                         if i == 0:
                             rows[-1] += '! n(i),t(i),d(i) in term n_i*tau^t_i*delta^d_i'
                 if NKW > 0:
                     for i in range(Nexp,len(t)):
-                        rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} {eta[i]} {epsilon[i]} {beta[i]} {gamma[i]} ')
+                        rows.append(f'{n[i]} {t[i]} {d[i]:0.10f} {eta[i]} {epsilon[i]} {beta[i]} {gamma[i]} ')
                         if i == Nexp:
                             rows[-1] += '! n(i),t(i),d(i),eta(i),epsilon(i),beta(i),gamma(i) in term n_i*tau^t_i*delta^d_i*exp(-eta*(delta-epsilon)^2-beta*(delta-gamma))'
 
@@ -994,7 +994,7 @@ class HMXBuilder:
                 if Nexp > 0:
                     Ntermsexp = 4
                     for i in range(Nexp):
-                        rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} {l[i]:0.1f} ')
+                        rows.append(f'{n[i]} {t[i]} {d[i]:0.16f} {l[i]:0.16f} ')
                         if i == 0:
                             rows[-1] += '! n(i),t(i),d(i),l(i) in term n_i*tau^t_i*delta^d_i*exp(-sgn(l_i)*delta^l_i)'
                 if NGaussian > 0:
@@ -1002,7 +1002,7 @@ class HMXBuilder:
                     for i in range(Nexp,len(t)):
                         negetai = -eta[i]
                         negbetai = -beta[i]
-                        rows.append(f'{n[i]} {t[i]} {d[i]:0.1f} 2.0 2.0 {negetai} {negbetai} {gamma[i]} {epsilon[i]} 0.0 0.0 0.0 0.0')
+                        rows.append(f'{n[i]} {t[i]} {d[i]:0.16f} 2.0 2.0 {negetai} {negbetai} {gamma[i]} {epsilon[i]} 0.0 0.0 0.0 0.0')
                         if i == Nexp:
                             rows[-1] += '! n(i),t(i),d(i),_,_,eta(i),beta(i),gamma(i),epsilon(i),_,_,_,_ in term n_i*tau^t_i*delta^d_i*exp(eta*(delta-epsilon)^2+beta*(tau-gamma)^2)'
             else:
