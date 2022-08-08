@@ -787,7 +787,7 @@ class HMXDeconstructor:
 
                 if MGaussian == 12:
                     blockgau = blocklines[istart+1+Npoly:istart+1+Npoly+NGaussian+1]
-                    ngau, tgau, dgau, dum1gau, dum2gau, dum3gau, eta, beta, gamma, epsilon, dum3, dum4  = zip(*[split_line(line) for line in blockgau])
+                    ngau, tgau, dgau, dum1gau, dum2gau, eta, beta, gamma, epsilon, dum3, dum4, dum5  = zip(*[split_line(line) for line in blockgau])
                 else:
                     ngau = [0.0]*NGaussian
                     tgau = [0.0]*NGaussian
@@ -800,7 +800,7 @@ class HMXDeconstructor:
                         raise ValueError(MGaussian)
 
                 departure_functions.append(dict(
-                    type='Exponential',
+                    type='Gaussian+Exponential',
                     n=list(npoly) + list(ngau),
                     t=list(tpoly) + list(tgau),
                     d=list(dpoly) + list(dgau),
