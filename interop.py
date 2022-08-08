@@ -288,6 +288,15 @@ class FLDDeconstructor:
         names = ['ai*log(tau**ti)','ai*tau**ti','ai*log(1-exp(bi*tau))']
 
         alpha0 = []
+
+        # To get the ln(delta) term that doesn't appear in the block
+        # anywhere
+        alpha0.append({
+            "a1": 0.0,
+            "a2": 0.0,
+            "type": "IdealGasHelmholtzLead"
+        })
+
         i = lines_contains('!Nterms', PX0_block)[0]+1
         for Nterms, name in zip(term_spec, names):
             lines = PX0_block[i:i+Nterms]
