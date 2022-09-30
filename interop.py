@@ -358,7 +358,7 @@ class FLDDeconstructor:
 
         return alpha0
 
-    def get_EOS(self):
+    def get_EOS(self, ideal=True):
         block = self.get_block('#EOS', r'^\s*[\n\r]') # end of block is a line with only whitespace and terminated with a newline, or a carriage return
         block = self.strip_commented(block)
         indices = lines_contains('eta      beta    gamma   epsilon', block)
@@ -591,7 +591,7 @@ class FLDDeconstructor:
           "Ttriple_units": "K",
           "acentric": acentric,
           "acentric_units": "-",
-          "alpha0": self.get_alpha0(Tc=Tr),
+          "alpha0": self.get_alpha0(Tc=Tr) if ideal else [],
           "alphar": alphar,
           "gas_constant": R,
           "gas_constant_units": "J/mol/K",
@@ -603,11 +603,11 @@ class FLDDeconstructor:
         }
         return EOS
 
-    def write_JSON(self, jsonpath):
+    def write_JSON(self, jsonpath, *, ideal=True, ancillaries=False):
         """ """
         f = {
-            'EOS': [self.get_EOS()],
-            'ANCILLARIES': self.get_ancillaries(),
+            'EOS': [self.get_EOS(ideal=ideal)],
+            'ANCILLARIES': self.get_ancillaries() if ancillaries else {},
             'INFO': self.get_info(),
         }
         f['STATES'] = {
