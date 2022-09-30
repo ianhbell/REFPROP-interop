@@ -146,7 +146,10 @@ class FLDDeconstructor:
 
     def formula_from_inchi(self):
         """ Parse the standard inchi string to extract the chemical formula in Hill order """
-        stdinchistring = self.get_keyed_line(self.lines, '!Standard InChI String', lambda x: x)[0]
+        try:
+            stdinchistring = self.get_keyed_line(self.lines, '!Standard InChI String', lambda x: x)[0]
+        except:
+            return 'COULD NOT PARSE InChI STRING'
         if '/' not in stdinchistring:
             raise ValueError(f'{stdinchistring} is not a valid standard InChI key')
         formula = stdinchistring.split('/')[1]
@@ -181,9 +184,19 @@ class FLDDeconstructor:
         aliases = [short_name, short_name.lower(), full_name, full_name.lower(), full_name.replace(' ','').upper(), short_name.replace(' ','').upper()]
         aliases = [alias for alias in aliases if alias != name]
         
-        StdInChIstr = self.get_keyed_line(self.lines, '!Standard InChI String', lambda x: x)[0]
-        if not StdInChIstr.startswith('InChI='):
-            StdInChIstr = "InChI=" + StdInChIstr
+        StdInChIstr = 'UNKNOWN'
+        try:
+            StdInChIstr = self.get_keyed_line(self.lines, '!Standard InChI String', lambda x: x)[0]
+            if not StdInChIstr.startswith('InChI='):
+                StdInChIstr = "InChI=" + StdInChIstr
+        except KeyError:
+            print('Unable to find InChI key')
+
+        InChIKey = 'UNKNOWN'
+        try:
+            self.get_keyed_line(self.lines, '!Standard InChI Key', lambda x: x)[0]
+        except KeyError:
+            print('Unable to find InChI key')
         
         return {
             "2DPNG_URL": f"http://www.chemspider.com/ImagesHandler.ashx?id={CHEMSPIDER_ID}",
