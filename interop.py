@@ -215,7 +215,7 @@ class FLDDeconstructor:
               "PH": 0
             },
             "FORMULA": self.formula_from_inchi(),
-            "INCHI_KEY": self.get_keyed_line(self.lines, '!Standard InChI Key', lambda x: x)[0],
+            "INCHI_KEY": InChIKey,
             "INCHI_STRING": StdInChIstr,
             "NAME": name,
             "REFPROP_NAME": name,
