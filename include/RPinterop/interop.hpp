@@ -5,6 +5,8 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <set>
+
 #include "nlohmann/json.hpp"
 
 //using namespace std;
@@ -314,6 +316,123 @@ HeaderResult convert_header(const vector<string>& lines){
     return h;
 }
 
+auto get_ancillary_description(const string& key){
+    return std::map<std::string, std::string>{
+        // Most are in this form:
+        {"PS5",  "P=Pc*EXP[SUM(Ni*Theta^ti)*Tc/T]"},
+        {"DL1",  "D=Dc*[1+SUM(Ni*Theta^ti)]"},
+        {"DV3",  "D=Dc*EXP[SUM(Ni*Theta^ti)]"},
+        
+        // Other ones might be of this form:
+        {"DL2",  "D=Dc*[1+SUM(Ni*Theta^(ti/3))]"},
+        {"DL4",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))]"},
+        {"DV6",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))*Tc/T]"},
+        {"DV4",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))]"},
+        {"DL6",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))*Tc/T]"},
+    }.at(key);
+};
+
+nlohmann::json get_ancillary(const vector<string>& lines){
+    
+    auto modelname = lines[0].substr(0, 3);
+    
+    // Find the first non-header row;
+    size_t i = std::string::npos;
+    for (auto j = 1; j < lines.size(); ++j){
+        // First line not started by element in {:,?,!}, stop
+        auto ind = lines[j].find_first_of(":?!");
+        if(!lines[j].empty() && (ind == 0)){
+            continue;
+        }
+        i = j; break;
+    }
+    
+    auto readnline = [](const string line, int n){
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(line), " ");
+        std::vector<double> o;
+        for (auto v : vals){
+            if (!v.empty()){
+                o.push_back(strtod(v.c_str(), nullptr));
+            }
+        }
+        if (o.size() != n){ throw; }
+        return o;
+    };
+    auto readn = [&lines, &i, &readnline](int n){
+        auto vals = readnline(lines[i], n);
+        i++;
+        return vals;
+    };
+    auto read1 = [&lines, &i, &readn](){ return readn(1)[0]; };
+    
+    double Tmin_K = read1();
+    double Tmax = read1();
+    double ph1 = read1();
+    double ph2 = read1();
+    auto reducing = readn(2);
+    reducing[1] *= 1000; // REFPROP uses mol/L & kPa, CoolProp uses mol/m^3 & Pa, multiply by 1000 to convert
+    auto Ncoeffs = readn(6);
+    
+    std::vector<double> n, t;
+    for (auto i = 0; i < Ncoeffs[0]; ++i){
+        auto z = readn(2);
+        n.push_back(z[0]);
+        t.push_back(z[1]);
+    }
+    //assert(len(n) == Ncoeffs[0] and len(t) == Ncoeffs[0]);
+    
+    auto desc = get_ancillary_description(modelname);
+    
+    using seti = std::set<int>;
+    using sets = std::set<std::string>;
+    std::string model_key = modelname.substr(0,2);
+    int key_index = modelname[2] - '0'; // See https://stackoverflow.com/a/628766
+    
+    std::string type_key;
+    if (model_key == "PS"){
+        type_key = "pL";
+    }
+    else if (sets{"DL1", "DL2"}.count(model_key) > 0){
+        type_key = "rhoLnoexp";
+    }
+    else if (model_key == "DL"){
+        type_key = "rhoL";
+        if (seti{1,3,5}.count(key_index) > 0){
+            for (auto&t_ : t){ t_ /= 3; }
+        }
+    }
+    else if (model_key == "DV"){
+        type_key = "rhoV";
+        if (seti{1,3,5}.count(key_index) > 0){
+            for (auto&t_ : t){ t_ /= 3; }
+        }
+    }
+    else{
+        throw std::invalid_argument(model_key);
+    }
+    
+    return {
+        {"T_r", reducing[0]},
+        {"Tmax", reducing[0]},
+        {"Tmin", Tmin_K},
+        {"description", desc},
+        {"n", n},
+        {"reducing_value", reducing[1]},
+        {"t", t},
+        {"type", type_key},
+        {"using_tau_r", (desc.find("Tc/T") != std::string::npos)}
+    };
+}
+
+nlohmann::json get_all_ancillaries(const vector<string>& lines){
+    return {
+        {"PS", get_ancillary(internal::get_line_chunk(lines, "PS"))},
+        {"DV", get_ancillary(internal::get_line_chunk(lines, "DV"))},
+        {"DL", get_ancillary(internal::get_line_chunk(lines, "DL"))}
+    };
+}
+
 class FLDfile{
 private:
     const std::string contents;
@@ -464,10 +583,18 @@ public:
         auto head = convert_header(lines);
         auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
         auto EOS = convert_EOS(feq);
+        
+        nlohmann::json ancillaries = nlohmann::json::array();
+        try{
+            ancillaries = get_all_ancillaries(lines);
+        }
+        catch(std::exception &e){
+            std::cerr << e.what() << std::endl;
+        }
 
         nlohmann::json f = {
             {"EOS", {EOS}},
-            {"ANCILLARIES", nlohmann::json::array()},//self.get_ancillaries() if ancillaries else {}},
+            {"ANCILLARIES", ancillaries},
             {"INFO", get_info(name, head)}
         };
         f["STATES"] = {
