@@ -7,25 +7,58 @@
 int main(int argc, char **argv)
 {
     args::ArgumentParser p("C++ interop converter");
-    args::Group arguments(p, "arguments", args::Group::Validators::DontCare, args::Options::Global);
-    args::ValueFlag<std::string> infile(arguments, "path", "The path to the input file", {"infile"});
-    args::ValueFlag<std::string> outfile(arguments, "path", "The path to the output file", {"outfile"});
+    args::Group group(p, "Specification of input (pick one):", args::Group::Validators::Xor);
+    args::ValueFlag<std::string> infile(group, "path", "The path to the input file", {"infile"});
+    args::ValueFlag<std::string> infolder(group, "path", "The path to the input folder within which the .FLD files will be processed ", {"infolder"});
+    
+    args::Group outgroup(p, "Specification of output (pick one, or none to stdout):", args::Group::Validators::Xor);
+    args::ValueFlag<std::string> outfile(outgroup, "path", "The path to the output file", {"outfile"});
+    args::ValueFlag<std::string> outfolder(outgroup, "path", "The path to the output folder", {"outfolder"});
+    
+    args::Group arguments(p, "Other arguments", args::Group::Validators::DontCare, args::Options::Global);
     args::HelpFlag h(arguments, "help", "help", {'h', "help"});
+    args::ValueFlag<int> verbosity(arguments, "", "The verbosity of the output, 0 is no output", {"v"});
 
     try
     {
         p.ParseCLI(argc, argv);
-        std::cout << infile.Get() << std::endl;
-        std::cout << outfile.Get() << std::endl;
-        RPinterop::FLDfile FLD(infile.Get());
-        std::string name = "CO2";
-        
-        if (!outfile.Get().empty()){
-            std::ofstream ofs(outfile.Get());
-            ofs << FLD.make_json(name).dump(1);
+       
+        if (infolder){
+            for (auto entry : std::filesystem::directory_iterator(infolder.Get())){
+                if (entry.path().filename().extension() != ".FLD"){
+                    continue;
+                }
+                RPinterop::FLDfile FLD(entry.path());
+                
+                std::string name = entry.path().filename().replace_extension("");
+                std::cout << name << std::endl;
+                if (!outfolder.Get().empty()){
+                    if (!std::filesystem::exists(outfolder.Get())){
+                        std::cerr << "Output folder of " << outfolder.Get() << " does not exist" << std::endl;
+                    }
+                    else{
+                        std::ofstream ofs(outfolder.Get()+"/"+name+".json");
+                        ofs << FLD.make_json(name).dump(1);
+                    }
+                }
+                else{
+                    std::cout << FLD.make_json(name).dump(1) << std::endl;
+                }
+            }
+        }
+        else if (infile){
+            RPinterop::FLDfile FLD(infile.Get());
+            std::string name = std::filesystem::path(infile.Get()).filename().replace_extension("");
+            if (!outfile.Get().empty()){
+                std::ofstream ofs(outfile.Get());
+                ofs << FLD.make_json(name).dump(1);
+            }
+            else{
+                std::cout << FLD.make_json(name).dump(1) << std::endl;
+            }
         }
         else{
-            std::cout << FLD.make_json(name).dump(1) << std::endl;
+            throw std::invalid_argument("Must provide either infile or infolder argument");
         }
     }
     catch (args::Help)
@@ -34,7 +67,7 @@ int main(int argc, char **argv)
     }
     catch (args::Error& e)
     {
-        std::cerr << e.what() << std::endl << p;
+        std::cerr << "Error: " << e.what() << std::endl << p;
         return 1;
     }
     return 0;

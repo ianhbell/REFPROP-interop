@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 #include <set>
+#include <regex>
 
 #include "nlohmann/json.hpp"
 
@@ -59,12 +60,15 @@ std::vector<std::string> get_line_chunk(
     const string& starting_key
 )
 {
-    // block starts with #EOS
-    size_t istart;
+    // block starts with the key
+    size_t istart = std::string::npos;
     for (auto i = 0; i < lines.size(); ++i){
         if (lines[i].find(starting_key) == 0){
             istart = i; break;
         }
+    }
+    if (istart == std::string::npos){
+        throw std::invalid_argument("Block starting with "+starting_key+" was not found");
     }
     // block ends with an empty line
     size_t iend = std::string::npos;
@@ -107,16 +111,23 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         } 
         i = j; break;
     }
-    auto readnline = [](const string line, int n){
+    auto readnline = [](const string& line, int n){
         using namespace internal;
         auto vals = strsplit(strip_line_comment(line), " ");
         std::vector<double> o;
         for (auto v : vals){
             if (!v.empty()){
-                o.push_back(strtod(v.c_str(), nullptr));
+                std::string v_e = std::regex_replace(v, std::regex("[Dd]"), "e");
+                std::string v_ew = std::regex_replace(v_e, std::regex("\\s+"), "");
+                if (v_ew.empty()){
+                    continue;
+                }
+                o.push_back(strtod(v_ew.c_str(), nullptr));
             }
         }
-        if (o.size() != n){ throw; }
+        if (n > 0){
+            if (o.size() != n){ throw std::invalid_argument("Unable to read "+std::to_string(n)+" numbers from this line:"+line); }
+        }
         return o;
     };
     auto readn = [&lines, &i, &readnline](int n){
@@ -128,14 +139,14 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         using namespace internal;
         auto vals = strsplit(strip_line_comment(lines[i]), " ");
         i++;
-        if (vals.empty()){ throw; }
+        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+lines[i]); }
         return vals[0];
     };
     auto read1 = [&lines, &i](){
         using namespace internal;
         auto vals = strsplit(strip_line_comment(lines[i]), " ");
         i++;
-        if (vals.empty()){ throw; }
+        if (vals.empty()){throw std::invalid_argument("Unable to read one number from this line:"+lines[i]); }
         return strtod(vals[0].c_str(), nullptr);
     };
     // Read in all the metadata parameters
@@ -160,14 +171,14 @@ ResidualResult convert_FEQ(const vector<string>& lines){
     res.R = read1();
 
     // And now we read the EOS
-    auto termcounts = readn(12);
+    auto termcounts = readn(-1);
     std::size_t Nnormal = termcounts[0];
     std::size_t Nnormalcount = termcounts[1]; // Parameters per term
     std::size_t NGaussian = termcounts[2];
     std::size_t NGaussiancount = termcounts[3]; // Parameters per term
 
     auto read_normal = [&readnline](const vector<string> &lines, size_t Nnormalcount) -> nlohmann::json {
-        std::vector<double> n, t, d, l;
+        std::vector<double> n, t, d, l, e;
         for (auto line : lines){
             auto z = readnline(line, Nnormalcount);
             n.push_back(z[0]);
@@ -176,8 +187,17 @@ ResidualResult convert_FEQ(const vector<string>& lines){
             if (Nnormalcount == 4){
                 l.push_back(z[3]);
             }
+            if (Nnormalcount == 5){
+                l.push_back(z[3]);
+                e.push_back(z[4]);
+            }
         }
-        return {{"type", "ResidualHelmholtzPower"}, {"n", n}, {"t", t}, {"d", d}, {"l", l}};
+        if (Nnormalcount <= 4){
+            return {{"type", "ResidualHelmholtzPower"}, {"n", n}, {"t", t}, {"d", d}, {"l", l}};
+        }
+        else if (Nnormalcount == 5){
+            return {{"type", "ResidualHelmholtzExponential"}, {"n", n}, {"t", t}, {"d", d}, {"l", l}, {"e", e}};
+        }
     };
 
     auto read_Gaussian = [&readnline](const vector<string> &lines, size_t NGaussiancount) -> nlohmann::json {
@@ -231,7 +251,7 @@ ResidualResult convert_FEQ(const vector<string>& lines){
                 nonanalyt["a"].push_back(z[11]);
             }
             else{
-                throw "Bad Gaussian term";
+                throw std::invalid_argument("Bad Gaussian term");
             }
         }
         nlohmann::json o = nlohmann::json::array();
@@ -275,14 +295,14 @@ HeaderResult convert_header(const vector<string>& lines){
         using namespace internal;
         auto vals = strsplit(strip_line_comment(lines[i]), "  ");
         i++;
-        if (vals.empty()){ throw; }
+        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+lines[i]); }
         return vals[0];
     };
     auto read1 = [&lines, &i](){
         using namespace internal;
         auto vals = strsplit(strip_line_comment(lines[i]), " ");
         i++;
-        if (vals.empty()){ throw; }
+        if (vals.empty()){throw std::invalid_argument("Unable to read one number from this line:"+lines[i]); }
         return strtod(vals[0].c_str(), nullptr);
     };
     h.short_name = read1str();
@@ -300,19 +320,21 @@ HeaderResult convert_header(const vector<string>& lines){
     h.dipole_D = read1();
     h.refstate = read1str();
     h.RPversion = read1str();
-
-    // And now the the new things...
-
-    h.UNnumber = read1();
-    h.family = read1str();
-    h.HVupper_kJmol = read1();
-    h.GWP100 = read1();
-    h.RCL_vv = read1();
-    h.ASHRAE34 = read1str();
-    h.StdInChIstr = read1str();
-    h.StdInChIKey = read1str(); 
-    h.altid = read1str();
-    h.hash = read1str();
+    
+    if (std::set<std::string>{"9.0", "10.0"}.count(h.RPversion) > 0){
+        // And now the the new things...
+        h.UNnumber = read1();
+        h.family = read1str();
+        h.HVupper_kJmol = read1();
+        h.GWP100 = read1();
+        h.RCL_vv = read1();
+        h.ASHRAE34 = read1str();
+        h.StdInChIstr = read1str();
+        h.StdInChIKey = read1str();
+        h.altid = read1str();
+        h.hash = read1str();
+    }
+    
     return h;
 }
 
@@ -356,7 +378,7 @@ nlohmann::json get_ancillary(const vector<string>& lines){
                 o.push_back(strtod(v.c_str(), nullptr));
             }
         }
-        if (o.size() != n){ throw; }
+        if (o.size() != n){ throw std::invalid_argument("Unable to read "+std::to_string(n)+" numbers from this line:"+line);  }
         return o;
     };
     auto readn = [&lines, &i, &readnline](int n){
@@ -437,8 +459,25 @@ class FLDfile{
 private:
     const std::string contents;
     const std::vector<std::string> lines;
-    std::string read_file(const std::filesystem::path &path){
-        std::ifstream ifs(path); std::stringstream buffer;  buffer << ifs.rdbuf(); return buffer.str();
+    std::string read_file(const std::filesystem::path &path, bool replace_tabs = true){
+        
+        std::ifstream ifs(path);
+        if (!ifs){
+            throw std::invalid_argument(path);
+        }
+        std::stringstream buffer;  buffer << ifs.rdbuf();
+        
+        std::string contents = buffer.str();
+        
+        if (contents.find("\t") != std::string::npos){
+            if(replace_tabs){
+                std::regex_replace(contents, std::regex("\t"), "    ");
+            }
+            else{
+                throw std::invalid_argument("Tabs found in the file "+path.string()+". Replace them with spaces.");
+            }
+        }
+        return buffer.str();
     }
 public:
     FLDfile(const std::filesystem::path &path) : contents(read_file(path)), lines(internal::strsplit(contents, "\n")){ };
