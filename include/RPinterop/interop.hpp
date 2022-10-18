@@ -623,7 +623,7 @@ public:
         auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
         auto EOS = convert_EOS(feq);
         
-        nlohmann::json ancillaries = nlohmann::json::array();
+        nlohmann::json ancillaries = nlohmann::json::object();
         try{
             ancillaries = get_all_ancillaries(lines);
         }
