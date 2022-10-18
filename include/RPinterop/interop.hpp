@@ -278,6 +278,127 @@ ResidualResult convert_FEQ(const vector<string>& lines){
  * Things that are obtained from parsing a residual Helmholtz
  * energy EOS
  */
+struct Alpha0Result{
+    double Tmin_K,Tmax_K,pmax_kPa,rhomax_molL;
+    std::string cp0_pointer;
+    double Tred_K, cp0red_JmolK, R;
+    nlohmann::json alpha0;
+};
+
+Alpha0Result convert_CP0(const vector<string>& lines){
+    Alpha0Result a;
+    
+    auto read1strline = [](const string &line){
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(line), " ");
+        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+line); }
+        return vals[0];
+    };
+    a.cp0_pointer = read1strline(lines[1]);
+    
+    // Find the first non-header row;
+    size_t i = std::string::npos;
+    for (auto j = 2; j < lines.size(); ++j){
+        // First line not started by element in {:,?,!}, stop
+        auto ind = lines[j].find_first_of(":?!");
+        if(!lines[j].empty() && (ind == 0)){
+            continue;
+        }
+        i = j; break;
+    }
+    auto readnline = [](const string& line, int n){
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(line), " ");
+        std::vector<double> o;
+        for (auto v : vals){
+            if (!v.empty()){
+                std::string v_e = std::regex_replace(v, std::regex("[Dd]"), "e");
+                std::string v_ew = std::regex_replace(v_e, std::regex("\\s+"), "");
+                if (v_ew.empty()){
+                    continue;
+                }
+                o.push_back(strtod(v_ew.c_str(), nullptr));
+            }
+        }
+        if (n > 0){
+            if (o.size() != n){ throw std::invalid_argument("Unable to read "+std::to_string(n)+" numbers from this line:"+line); }
+        }
+        return o;
+    };
+    auto readn = [&lines, &i, &readnline](int n){
+        auto vals = readnline(lines[i], n);
+        i++;
+        return vals;
+    };
+    auto read1str = [&lines, &i](){
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(lines[i]), " ");
+        i++;
+        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+lines[i]); }
+        return vals[0];
+    };
+    auto read1 = [&lines, &i](){
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(lines[i]), " ");
+        i++;
+        if (vals.empty()){throw std::invalid_argument("Unable to read one number from this line:"+lines[i]); }
+        return strtod(vals[0].c_str(), nullptr);
+    };
+    
+    // Read in all the metadata parameters
+    a.Tmin_K = read1();
+    a.Tmax_K = read1();
+    a.pmax_kPa = read1();
+    a.rhomax_molL = read1();
+    auto r = readn(2);
+    a.Tred_K = r[0];
+    a.cp0red_JmolK = r[1];
+    
+    auto N = readn(7);
+    auto Npoly = N[0];
+    auto NPlanck = N[1];
+
+    // cp0/R = c_i*T^t_i
+    auto read_polynomial = [&readnline, &a](const vector<string> &lines) -> nlohmann::json {
+        std::vector<double> c, t;
+        for (auto line : lines){
+            auto z = readnline(line, 2);
+            c.push_back(z[0]);
+            t.push_back(z[1]);
+        }
+        return {{"type", "IdealGasHelmholtzCP0PolyT"}, {"c", c}, {"t", t}, {"T0", 298.15}, {"R", a.cp0red_JmolK}};
+    };
+    
+    auto read_Planck = [&readnline, &a](const vector<string> &lines) -> nlohmann::json {
+        std::vector<double> n, v;
+        for (auto line : lines){
+            auto z = readnline(line, 2);
+            n.push_back(z[0]);
+            v.push_back(z[1]);
+        }
+        return {{"type", "IdealGasHelmholtzPlanckEinsteinFunctionT"}, {"n", n}, {"v", v}, {"T0", 298.15}, {"R",a.cp0red_JmolK} };
+    };
+
+    a.alpha0 = nlohmann::json::array();
+    // The log(rho) term that is always included
+    a.alpha0.push_back({{"a1", 0.0}, {"a2", 0.0}, {"type", "IdealGasHelmholtzLead"}});
+    a.alpha0.push_back({{"a", -1}, {"type", "IdealGasHelmholtzLogTau"}});
+    if (Npoly > 0){
+        auto l = std::vector<std::string>(lines.begin()+i, lines.begin()+i+Npoly);
+        a.alpha0.push_back(read_polynomial(l));
+    }
+    if (NPlanck > 0){
+        auto l = std::vector<std::string>(lines.begin()+i+Npoly, lines.begin()+i+NPlanck+Npoly);
+        a.alpha0.push_back(read_Planck(l));
+    }
+    
+    return a;
+}
+
+/**
+ * Things that are obtained from parsing a residual Helmholtz
+ * energy EOS
+ */
 struct HeaderResult{
     std::string short_name, CASnum, full_name, chemical_formula, synonym;
     double MM_kgkmol, Ttriple_K, Tnbp_K, Tcrit_K, pcrit_kPa, rhocrit_molL, acentric, dipole_D;
@@ -482,9 +603,7 @@ private:
 public:
     FLDfile(const std::filesystem::path &path) : contents(read_file(path)), lines(internal::strsplit(contents, "\n")){ };
 
-    nlohmann::json convert_EOS(const RPinterop::ResidualResult& feq){
-
-        bool alpha0 = false;
+    nlohmann::json convert_EOS(const RPinterop::ResidualResult& feq, const RPinterop::Alpha0Result& alpha0){
 
         nlohmann::json STATES = {
             {"reducing", {
@@ -535,7 +654,7 @@ public:
           {"Ttriple_units", "K"},
           {"acentric", feq.acentric},
           {"acentric_units", "-"},
-          {"alpha0", (alpha0) ? nlohmann::json::array() : nlohmann::json::array()},
+          {"alpha0", alpha0.alpha0},
           {"alphar", feq.alphar},
           {"gas_constant", feq.R},
           {"gas_constant_units", "J/mol/K"},
@@ -621,7 +740,8 @@ public:
     auto make_json(const string& name){
         auto head = convert_header(lines);
         auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
-        auto EOS = convert_EOS(feq);
+        auto alpha0 = convert_CP0(internal::get_line_chunk(lines, "#AUX"));
+        auto EOS = convert_EOS(feq, alpha0);
         
         nlohmann::json ancillaries = nlohmann::json::object();
         try{
