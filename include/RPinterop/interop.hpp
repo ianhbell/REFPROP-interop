@@ -591,9 +591,9 @@ public:
     // }
 
     nlohmann::json get_info(const std::string& name, const RPinterop::HeaderResult &head){
-        std::string CHEMSPIDER_ID = "-1";
+        int CHEMSPIDER_ID = -1;
         return {
-            {"2DPNG_URL", "http://www.chemspider.com/ImagesHandler.ashx?id=" + CHEMSPIDER_ID},
+            {"2DPNG_URL", "http://www.chemspider.com/ImagesHandler.ashx?id=" + std::to_string(CHEMSPIDER_ID)},
             {"ALIASES", nlohmann::json::array()},
             {"CAS", head.CASnum},
             {"CHEMSPIDER_ID", CHEMSPIDER_ID},
