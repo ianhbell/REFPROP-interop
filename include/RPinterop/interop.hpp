@@ -356,11 +356,11 @@ auto get_ancillary_description(const string& key){
 
 nlohmann::json get_ancillary(const vector<string>& lines){
     
-    auto modelname = lines[0].substr(0, 3);
+    auto modelname = lines[1].substr(0, 3);
     
     // Find the first non-header row;
     size_t i = std::string::npos;
-    for (auto j = 1; j < lines.size(); ++j){
+    for (auto j = 2; j < lines.size(); ++j){
         // First line not started by element in {:,?,!}, stop
         auto ind = lines[j].find_first_of(":?!");
         if(!lines[j].empty() && (ind == 0)){
@@ -449,9 +449,9 @@ nlohmann::json get_ancillary(const vector<string>& lines){
 
 nlohmann::json get_all_ancillaries(const vector<string>& lines){
     return {
-        {"PS", get_ancillary(internal::get_line_chunk(lines, "PS"))},
-        {"DV", get_ancillary(internal::get_line_chunk(lines, "DV"))},
-        {"DL", get_ancillary(internal::get_line_chunk(lines, "DL"))}
+        {"PS", get_ancillary(internal::get_line_chunk(lines, "#PS"))},
+        {"DV", get_ancillary(internal::get_line_chunk(lines, "#DV"))},
+        {"DL", get_ancillary(internal::get_line_chunk(lines, "#DL"))}
     };
 }
 
