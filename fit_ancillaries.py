@@ -1,4 +1,8 @@
 import os
+import glob
+import subprocess
+import json
+
 import numpy as np
 import scipy.optimize
 import matplotlib.pyplot as plt
@@ -12,9 +16,9 @@ class AncillaryFitter:
         prop: What to fit, options are {'rhoL','rhoV','pS'}
         """
         self.FLD = FLD
-        Tt, Tc, Tr, rho_c, p_c, rhor = RP.REFPROPdll('','','TTRP;TC;TRED;DC;PC;DRED', RP.MOLAR_BASE_SI, 0,0,0,0,[1.0]).Output[0:6]
-        self.Ts = np.linspace(Tt, 0.99*Tc)
-        self.ps = np.array([RP.REFPROPdll('','TQ','P',RP.MOLAR_BASE_SI,0,0,T,0,[1.0]).Output[0] for T in self.Ts])
+        Tt, Tc, Tr, Tmin, rho_c, p_c, rhor = RP.REFPROPdll('','','TTRP;TC;TRED;TMIN;DC;PC;DRED', RP.MOLAR_BASE_SI, 0,0,0,0,[1.0]).Output[0:7]
+        self.Ts = np.linspace(Tmin, 0.99*Tc)
+        self.pS = np.array([RP.REFPROPdll('','TQ','P',RP.MOLAR_BASE_SI,0,0,T,0,[1.0]).Output[0] for T in self.Ts])
         self.rhoL = np.array([RP.REFPROPdll('','TQ','D',RP.MOLAR_BASE_SI,0,0,T,0,[1.0]).Output[0] for T in self.Ts])
         self.rhoV = np.array([RP.REFPROPdll('','TQ','D',RP.MOLAR_BASE_SI,0,0,T,1,[1.0]).Output[0] for T in self.Ts])
         T_r = Tc if Tr==Tc else Tr
@@ -23,7 +27,7 @@ class AncillaryFitter:
 
         using_tau_r = False
         if prop in ['pS','pL','pV']:
-            self.LHS = np.log(self.ps/p_c)*self.Ts/T_r
+            self.LHS = np.log(self.pS/p_c)*self.Ts/T_r
             using_tau_r = True
             reducing_value = p_c
         elif prop in ['rhoL']:
@@ -42,7 +46,12 @@ class AncillaryFitter:
             'Tmin': Tt,
             'Tmax': T_r
         }
-        print(self.LHS)
+        # print(self.LHS)
+
+    def plot_values(self):
+        plt.plot(self.theta, self.LHS)
+        plt.gca().set(xlabel=r'$\theta=1-T/T_{\rm red}$', ylabel='LHS')
+        plt.show()
 
     def evaluator(self, *, anc, T):
         """
@@ -91,39 +100,32 @@ class AncillaryFitter:
     def optimize(self, bounds):
         return scipy.optimize.differential_evolution(self.split_objective, bounds=bounds)
 
-if __name__ == '__main__':
-    from ctREFPROP.ctREFPROP import REFPROPFunctionLibrary
-    root = os.getenv('RPPREFIX')
-    RP = REFPROPFunctionLibrary(root)
-    RP.SETPATHdll(root)
-    ierr = RP.SETFLUIDSdll(os.path.abspath('PROPANE.FLD'))
+def ancillary_injecter(*, RP, FLD, teqp, plot=True):
+    ierr = RP.SETFLUIDSdll(FLD)
     if ierr != 0:
         print(RP.ERRMSGdll(ierr))
         quit()
 
-    anc = AncillaryFitter(FLD='R1132a', prop='pS', RP=RP)
-    opt = scipy.optimize.differential_evolution(anc.split_objective, bounds=[(0.1, 5) for i in range(5)])
-    n, A = anc.get_n(t=opt.x)
-    err = np.dot(A, n)-anc.LHS
-    a = anc.get_ancillary(n=n, t=opt.x)
-    p = np.array([anc.evaluator(anc=a, T=T_) for T_ in anc.Ts])
-    plt.plot(anc.Ts, anc.ps/p-1)
-    plt.show()
+    with open(teqp) as fp:
+        j = json.load(fp)
 
-    anc = AncillaryFitter(FLD='R1132a', prop='rhoL', RP=RP)
-    opt = scipy.optimize.differential_evolution(anc.split_objective, bounds=[(0.1, 5) for i in range(5)])
-    n, A = anc.get_n(t=opt.x)
-    err = np.dot(A, n)-anc.LHS
-    a = anc.get_ancillary(n=n, t=opt.x)
-    rho = np.array([anc.evaluator(anc=a, T=T_) for T_ in anc.Ts])
-    plt.plot(anc.Ts, anc.rhoL/rho-1)
-    plt.show()
+    if 'rhoL' in j['ANCILLARIES']:
+        print('Ancillaries already exist for FLD')
+        return
 
-    anc = AncillaryFitter(FLD='R1132a', prop='rhoV', RP=RP)
-    opt = scipy.optimize.differential_evolution(anc.split_objective, bounds=[(0.1, 5) for i in range(5)])
-    n, A = anc.get_n(t=opt.x)
-    err = np.dot(A, n)-anc.LHS
-    a = anc.get_ancillary(n=n, t=opt.x)
-    rho = np.array([anc.evaluator(anc=a, T=T_) for T_ in anc.Ts])
-    plt.plot(anc.Ts, anc.rhoV/rho-1)
-    plt.show()
+    for propkey in ['pS', 'rhoL', 'rhoV']:
+        anc = AncillaryFitter(FLD=FLD, prop=propkey, RP=RP)
+        # anc.plot_values()
+        opt = scipy.optimize.differential_evolution(anc.split_objective, bounds=[(0.1, 5) for i in range(5)])
+        n, A = anc.get_n(t=opt.x)
+        err = np.dot(A, n)-anc.LHS
+        a = anc.get_ancillary(n=n, t=opt.x)
+        y = np.array([anc.evaluator(anc=a, T=T_) for T_ in anc.Ts])
+        if plot:
+            plt.plot(anc.Ts, getattr(anc, propkey)/y-1)
+            plt.title(f'{propkey} / {os.path.basename(FLD)}')
+            plt.show()
+        j['ANCILLARIES'][propkey] = a
+        
+    with open(teqp, 'w') as fp:
+        fp.write(json.dumps(j,indent=2))
