@@ -285,7 +285,7 @@ struct Alpha0Result{
     nlohmann::json alpha0;
 };
 
-Alpha0Result convert_CP0(const vector<string>& lines){
+Alpha0Result convert_CP0(const vector<string>& lines, double Tri){
     Alpha0Result a;
     
     auto read1strline = [](const string &line){
@@ -359,24 +359,24 @@ Alpha0Result convert_CP0(const vector<string>& lines){
     auto NPlanck = N[1];
 
     // cp0/R = c_i*T^t_i
-    auto read_polynomial = [&readnline, &a](const vector<string> &lines) -> nlohmann::json {
+    auto read_polynomial = [&readnline, &a, &Tri](const vector<string> &lines) -> nlohmann::json {
         std::vector<double> c, t;
         for (auto line : lines){
             auto z = readnline(line, 2);
             c.push_back(z[0]);
             t.push_back(z[1]);
         }
-        return {{"type", "IdealGasHelmholtzCP0PolyT"}, {"c", c}, {"t", t}, {"T0", 298.15}, {"R", a.cp0red_JmolK}};
+        return {{"type", "IdealGasHelmholtzCP0PolyT"}, {"c", c}, {"t", t}, {"T0", 298.15}, {"Tc", Tri}, {"R", a.cp0red_JmolK}};
     };
     
-    auto read_Planck = [&readnline, &a](const vector<string> &lines) -> nlohmann::json {
+    auto read_Planck = [&readnline, &a, &Tri](const vector<string> &lines) -> nlohmann::json {
         std::vector<double> n, v;
         for (auto line : lines){
             auto z = readnline(line, 2);
             n.push_back(z[0]);
             v.push_back(z[1]);
         }
-        return {{"type", "IdealGasHelmholtzPlanckEinsteinFunctionT"}, {"n", n}, {"v", v}, {"T0", 298.15}, {"R",a.cp0red_JmolK} };
+        return {{"type", "IdealGasHelmholtzPlanckEinsteinFunctionT"}, {"n", n}, {"v", v}, {"T0", 298.15}, {"Tcrit", Tri}, {"R",a.cp0red_JmolK} };
     };
 
     a.alpha0 = nlohmann::json::array();
@@ -740,7 +740,7 @@ public:
     auto make_json(const string& name){
         auto head = convert_header(lines);
         auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
-        auto alpha0 = convert_CP0(internal::get_line_chunk(lines, "#AUX"));
+        auto alpha0 = convert_CP0(internal::get_line_chunk(lines, "#AUX"), feq.Tred_K);
         auto EOS = convert_EOS(feq, alpha0);
         
         nlohmann::json ancillaries = nlohmann::json::object();
