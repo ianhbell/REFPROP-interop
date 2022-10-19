@@ -178,7 +178,7 @@ ResidualResult convert_FEQ(const vector<string>& lines){
     std::size_t NGaussiancount = termcounts[3]; // Parameters per term
 
     auto read_normal = [&readnline](const vector<string> &lines, size_t Nnormalcount) -> nlohmann::json {
-        std::vector<double> n, t, d, l, e;
+        std::vector<double> n, t, d, l, g;
         for (auto line : lines){
             auto z = readnline(line, Nnormalcount);
             n.push_back(z[0]);
@@ -189,14 +189,14 @@ ResidualResult convert_FEQ(const vector<string>& lines){
             }
             if (Nnormalcount == 5){
                 l.push_back(z[3]);
-                e.push_back(z[4]);
+                g.push_back(z[4]);
             }
         }
         if (Nnormalcount <= 4){
             return {{"type", "ResidualHelmholtzPower"}, {"n", n}, {"t", t}, {"d", d}, {"l", l}};
         }
         else if (Nnormalcount == 5){
-            return {{"type", "ResidualHelmholtzExponential"}, {"n", n}, {"t", t}, {"d", d}, {"l", l}, {"e", e}};
+            return {{"type", "ResidualHelmholtzExponential"}, {"n", n}, {"t", t}, {"d", d}, {"l", l}, {"g", g}};
         }
     };
 
