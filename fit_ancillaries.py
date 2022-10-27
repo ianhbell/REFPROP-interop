@@ -30,17 +30,22 @@ class AncillaryFitter:
             self.LHS = np.log(self.pS/p_c)*self.Ts/T_r
             using_tau_r = True
             reducing_value = p_c
+            description = 'P=Pc*exp[sum(Ni*Theta^ti)*Tred/T]; Theta=1-T/Tred'
         elif prop in ['rhoL']:
             self.LHS = (self.rhoL/rho_r)-1
             reducing_value = rho_r
+            description = 'D=Dred*[1+sum(Ni*Theta^ti)]; Theta=1-T/Tred'
         elif prop in ['rhoV']:
             self.LHS = np.log(self.rhoV/rho_r)
             reducing_value = rho_r
+            description = 'D=Dred*exp[sum(Ni*Theta^ti)]; Theta=1-T/Tred'
         else:
             raise KeyError(prop)
+
         self.base_anc = {
             'T_r': T_r,
             'type': prop + ('noexp' if prop =='rhoL' else ''),
+            'description': description,
             'using_tau_r': using_tau_r,
             'reducing_value': reducing_value,
             'Tmin': Tt,
