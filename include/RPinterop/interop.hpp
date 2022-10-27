@@ -101,6 +101,18 @@ JSON representation
 ResidualResult convert_FEQ(const vector<string>& lines){
     ResidualResult res;
     
+    auto read1strline = [](const string &line){
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(line), " ");
+        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+line); }
+        return vals[0];
+    };
+    auto model_key = read1strline(lines[1]);
+    if (model_key != "FEQ"){
+        throw std::invalid_argument("Cannot parse this EOS type:" + model_key);
+    }
+    
+    
     // Find the first non-header row;
     size_t i = std::string::npos; 
     for (auto j = 2; j < lines.size(); ++j){
