@@ -14,10 +14,12 @@ int main(int argc, char **argv)
     args::Group outgroup(p, "Specification of output (pick one, or none to stdout):", args::Group::Validators::Xor);
     args::ValueFlag<std::string> outfile(outgroup, "path", "The path to the output file", {"outfile"});
     args::ValueFlag<std::string> outfolder(outgroup, "path", "The path to the output folder", {"outfolder"});
+    args::ValueFlag<int> outstdout(outgroup, "", "Print to console on stdout", {"outstdout"});
     
     args::Group arguments(p, "Other arguments", args::Group::Validators::DontCare, args::Options::Global);
     args::HelpFlag h(arguments, "help", "help", {'h', "help"});
     args::ValueFlag<int> verbosity(arguments, "", "The verbosity of the output, 0 is no output", {"v"});
+    
 
     try
     {
@@ -28,21 +30,39 @@ int main(int argc, char **argv)
                 if (entry.path().filename().extension() != ".FLD"){
                     continue;
                 }
-                RPinterop::FLDfile FLD(entry.path());
-                
                 std::string name = entry.path().filename().replace_extension("");
-                std::cout << name << std::endl;
-                if (!outfolder.Get().empty()){
-                    if (!std::filesystem::exists(outfolder.Get())){
-                        std::cerr << "Output folder of " << outfolder.Get() << " does not exist" << std::endl;
+                
+                try{
+                    RPinterop::FLDfile FLD(entry.path());
+                    nlohmann::json j = FLD.make_json(name).dump(1);
+                    
+                    auto warnings = FLD.get_warnings();
+                    auto errors = FLD.get_errors();
+                    
+                    if (!warnings.empty()){
+                        std::cout << name << std::endl;
+                        for (auto &warn : warnings){
+                            std::cout << "    [WARN]: " << warn << std::endl;
+                        }
+                    }
+                    
+                    if (!outfolder.Get().empty()){
+                        if (!std::filesystem::exists(outfolder.Get())){
+                            std::cerr << "Output folder of " << outfolder.Get() << " does not exist" << std::endl;
+                        }
+                        else{
+                            std::ofstream ofs(outfolder.Get()+"/"+name+".json");
+                            ofs << j << std::endl;
+                        }
                     }
                     else{
-                        std::ofstream ofs(outfolder.Get()+"/"+name+".json");
-                        ofs << FLD.make_json(name).dump(1);
+                        std::cout << j << std::endl;
                     }
                 }
-                else{
-                    std::cout << FLD.make_json(name).dump(1) << std::endl;
+                catch(std::exception &e){
+                    //throw e;
+                    std::cout << name << std::endl;
+                    std::cout << "    [ERROR]: " << e.what() << std::endl;
                 }
             }
         }

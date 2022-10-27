@@ -704,8 +704,12 @@ private:
         }
         return buffer.str();
     }
+    std::vector<std::string> warnings, errors;
 public:
     FLDfile(const std::filesystem::path &path) : contents(read_file(path)), lines(internal::strsplit(contents, "\n")){ };
+    
+    auto get_warnings(){ return warnings; }
+    auto get_errors(){ return errors; }
 
     nlohmann::json convert_EOS(const RPinterop::ResidualResult& feq, const RPinterop::Alpha0Result& alpha0){
 
@@ -852,7 +856,8 @@ public:
             ancillaries = get_all_ancillaries(lines);
         }
         catch(std::exception &e){
-            std::cerr << e.what() << std::endl;
+            warnings.push_back("Could not load ancillaries");
+//            std::cerr << e.what() << std::endl;
         }
 
         nlohmann::json f = {
