@@ -200,8 +200,14 @@ ResidualResult convert_FEQ(const vector<string>& lines){
                 l.push_back(z[3]);
             }
             if (Nnormalcount == 5){
-                l.push_back(z[3]);
-                g.push_back(z[4]);
+                double l_ = z[3];
+                l.push_back(l_);
+                if (l_ == 0){
+                    g.push_back(0);
+                }
+                else{
+                    g.push_back(z[4]);
+                }
             }
         }
         if (Nnormalcount <= 4){
