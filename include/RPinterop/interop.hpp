@@ -23,13 +23,13 @@ vector<string> strsplit (string s, string delimiter) {
     size_t pos_start = 0, pos_end, delim_len = delimiter.length();
     string token;
     vector<string> res;
-
+    
     while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
         token = s.substr (pos_start, pos_end - pos_start);
         pos_start = pos_end + delim_len;
         res.push_back (token);
     }
-
+    
     res.push_back (s.substr (pos_start));
     return res;
 }
@@ -39,7 +39,7 @@ string strjoin(const vector<string> &lines, const std::string& delim){
         std::string o = lines[0];
         for (auto i = 1; i < lines.size(); ++i){
             o += delim + lines[i];
-        }    
+        }
         return o;
     }
 }
@@ -56,9 +56,9 @@ string strip_line_comment(const string& line){
 }
 
 std::vector<std::string> get_line_chunk(
-    const std::vector<std::string>& lines,
-    const string& starting_key
-)
+                                        const std::vector<std::string>& lines,
+                                        const string& starting_key
+                                        )
 {
     // block starts with the key
     size_t istart = std::string::npos;
@@ -80,6 +80,13 @@ std::vector<std::string> get_line_chunk(
     return std::vector<std::string>(lines.begin()+istart, lines.begin()+iend);
 }
 
+string to_upper(const string& str){
+    auto s = str; // copy :(
+    std::locale locale;
+    auto f = [&locale] (char ch) { return std::use_facet<std::ctype<char>>(locale).toupper(ch); };
+    std::transform(s.begin(), s.end(), s.begin(), f);
+    return s;
+}
 }
 
 /**
@@ -437,28 +444,76 @@ struct HeaderResult{
     std::string short_name, CASnum, full_name, chemical_formula, synonym;
     double MM_kgkmol, Ttriple_K, Tnbp_K, Tcrit_K, pcrit_kPa, rhocrit_molL, acentric, dipole_D;
     std::string refstate, RPversion;
-    int UNnumber;
-    std::string family;
-    double HVupper_kJmol, GWP100, RCL_vv;
-    std::string ASHRAE34, StdInChIstr, StdInChIKey, altid, hash;
+    std::string UNnumber = "?";
+    std::string family = "?";
+    double HVupper_kJmol = 99999999, GWP100=99999999, RCL_vv = 99999999, ODP=99999999;
+    std::string ASHRAE34 = "?", StdInChIstr = "?", StdInChIKey = "?", altid = "?", hash = "?";
+    auto to_int(const std::string& s) -> int {
+        return strtol(s.c_str(), nullptr, 10);
+    }
+    auto to_double(const std::string& s) -> int {
+        return strtod(s.c_str(), nullptr);
+    }
+    void set(const std::string &k, const std::string &val){
+        if (k == "FAMILY"){
+            family = val;
+        }
+        else if (k == "UN"){
+            UNnumber = to_int(val);
+        }
+        else if (k == "INCHI"){
+            StdInChIstr = val;
+        }
+        else if (k == "INCHIKEY"){
+            StdInChIKey = val;
+        }
+        else if (k == "SAFETY"){
+            ASHRAE34 = val;
+        }
+        else if (k == "ALTID"){
+            altid = val;
+        }
+        else if (k == "HASH"){
+            hash = val;
+        }
+        else if (k == "HEAT"){
+            HVupper_kJmol = to_double(val);
+        }
+        else if (k == "GWP"){
+            GWP100 = to_double(val);
+        }
+        else if (k == "ODP"){
+            ODP = to_double(val);
+        }
+        else if (k == "RCL"){
+            RCL_vv = to_double(val);
+        }
+        else{
+            throw std::invalid_argument(k);
+        }
+    }
 };
 
 HeaderResult convert_header(const vector<string>& lines){
     HeaderResult h;
     std::size_t i = 0;
-    auto read1str = [&lines, &i](){
+    auto _read1str = [](const std::string &line){
         using namespace internal;
-        auto vals = strsplit(strip_line_comment(lines[i]), "  ");
-        i++;
-        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+lines[i]); }
+        auto vals = strsplit(strip_line_comment(line), "  ");
+        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+line); }
         return vals[0];
     };
-    auto read1 = [&lines, &i](){
+    auto read1str = [&lines, &i, &_read1str](){
+        string val = _read1str(lines[i]); i++; return val;
+    };
+    auto _read1 = [](const std::string &line){
         using namespace internal;
-        auto vals = strsplit(strip_line_comment(lines[i]), " ");
-        i++;
-        if (vals.empty()){throw std::invalid_argument("Unable to read one number from this line:"+lines[i]); }
+        auto vals = strsplit(strip_line_comment(line), " ");
+        if (vals.empty()){throw std::invalid_argument("Unable to read one number from this line:"+line); }
         return strtod(vals[0].c_str(), nullptr);
+    };
+    auto read1 = [&lines, &i, &_read1](){
+        double val = _read1(lines[i]); i++; return val;
     };
     h.short_name = read1str();
     h.CASnum = read1str();
@@ -476,18 +531,24 @@ HeaderResult convert_header(const vector<string>& lines){
     h.refstate = read1str();
     h.RPversion = read1str();
     
-    if (std::set<std::string>{"9.0", "10.0"}.count(h.RPversion) > 0){
-        // And now the the new things...
+    if (h.RPversion == "10.0"){
+        for (; i < lines.size(); ++i){
+            std::smatch match;
+            if (lines[i].find_first_not_of(" \t\n\v\f\r") == std::string::npos){
+                break;
+            }
+            if (!std::regex_search(lines[i], match, std::regex(R"(:(\w+):)"))){
+                throw std::invalid_argument("This line doesn't contain a key contained in colons: "+lines[i]+"; it has length of "+std::to_string(lines[i].size()));
+            }
+            h.set(internal::to_upper(match[1]), lines[i]);
+        }
+    }
+    else if (h.RPversion == "9.0" || h.RPversion == "8.0"){
         h.UNnumber = read1();
         h.family = read1str();
-        h.HVupper_kJmol = read1();
-        h.GWP100 = read1();
-        h.RCL_vv = read1();
-        h.ASHRAE34 = read1str();
-        h.StdInChIstr = read1str();
-        h.StdInChIKey = read1str();
-        h.altid = read1str();
-        h.hash = read1str();
+        if (i < lines.size()-1){
+            h.HVupper_kJmol = read1();
+        }
     }
     
     return h;
@@ -508,7 +569,7 @@ auto get_ancillary_description(const string& key){
         {"DV4",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))]"},
         {"DV5",  "D=Dc*EXP[SUM(Ni*Theta^ti)*Tc/T]"},
         {"DV6",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))*Tc/T]"},
-        {"PS6",  "P=Pc*EXP[SUM(Ni*Theta^(ti/3))*Tc/T]"},        
+        {"PS6",  "P=Pc*EXP[SUM(Ni*Theta^(ti/3))*Tc/T]"},
     };
     if (keys.count(key) > 0){
         return keys.at(key);
