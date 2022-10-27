@@ -223,7 +223,7 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         // and they are disambiguated based upon the parameters in the term
         // (this is not documented anywhere in REFPROP)
 
-        nlohmann::json normal, nonanalyt;
+        nlohmann::json normal, nonanalyt, R125;
         auto init_normal = [&normal](){
             std::vector<double> _;
             normal = {
@@ -238,6 +238,13 @@ ResidualResult convert_FEQ(const vector<string>& lines){
                 {"n", _}, {"a", _}, {"b", _}, {"beta", _}, 
                 {"A", _}, {"B", _}, {"C", _}, {"D", _}, 
                 {"type", "ResidualHelmholtzNonAnalytic"}
+            };
+        };
+        auto init_R125= [&R125](){
+            std::vector<double> _;
+            R125 = {
+                {"n", _}, {"t", _}, {"d", _}, {"l", _}, {"m", _},
+                {"type", "ResidualHelmholtzLemmon2005"}
             };
         };
         
@@ -255,6 +262,15 @@ ResidualResult convert_FEQ(const vector<string>& lines){
                 normal["beta"].push_back(-z[6]);
                 normal["gamma"].push_back(z[7]);
                 normal["epsilon"].push_back(z[8]);
+            }
+            else if (z[5] == -1 && z[6] == -1 && z[7] == 0 && z[8] == 0 && z[9] == 0 && z[10] == 0 && z[11] == 0){
+                // It is a R125 term from Lemmon, 2005
+                if (R125.empty()){ init_R125(); }
+                normal["n"].push_back(z[0]);
+                normal["t"].push_back(z[1]);
+                normal["d"].push_back(z[2]);
+                normal["l"].push_back(z[3]);
+                normal["m"].push_back(z[4]);
             }
             else if (z[3] == 2 && z[4] == 2 && z[9] != 0 && z[10] != 0 && z[11] != 0){
                 // It is a non-analytic Gaussian term
