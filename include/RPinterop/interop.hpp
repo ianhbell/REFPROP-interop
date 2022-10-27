@@ -472,7 +472,7 @@ HeaderResult convert_header(const vector<string>& lines){
 }
 
 auto get_ancillary_description(const string& key){
-    return std::map<std::string, std::string>{
+    const std::map<std::string, std::string> keys = {
         // Most are in this form:
         {"PS5",  "P=Pc*EXP[SUM(Ni*Theta^ti)*Tc/T]"},
         {"DL1",  "D=Dc*[1+SUM(Ni*Theta^ti)]"},
@@ -480,11 +480,20 @@ auto get_ancillary_description(const string& key){
         
         // Other ones might be of this form:
         {"DL2",  "D=Dc*[1+SUM(Ni*Theta^(ti/3))]"},
+        {"DL3",  "D=Dc*EXP[SUM(Ni*Theta^ti)]"},
         {"DL4",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))]"},
-        {"DV6",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))*Tc/T]"},
-        {"DV4",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))]"},
         {"DL6",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))*Tc/T]"},
-    }.at(key);
+        {"DV4",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))]"},
+        {"DV5",  "D=Dc*EXP[SUM(Ni*Theta^ti)*Tc/T]"},
+        {"DV6",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))*Tc/T]"},
+        {"PS6",  "P=Pc*EXP[SUM(Ni*Theta^(ti/3))*Tc/T]"},        
+    };
+    if (keys.count(key) > 0){
+        return keys.at(key);
+    }
+    else{
+        throw std::invalid_argument("Bad ancillary model for getting description: " + key);
+    }
 };
 
 nlohmann::json get_ancillary(const vector<string>& lines){
@@ -582,9 +591,9 @@ nlohmann::json get_ancillary(const vector<string>& lines){
 
 nlohmann::json get_all_ancillaries(const vector<string>& lines){
     return {
-        {"PS", get_ancillary(internal::get_line_chunk(lines, "#PS"))},
-        {"DV", get_ancillary(internal::get_line_chunk(lines, "#DV"))},
-        {"DL", get_ancillary(internal::get_line_chunk(lines, "#DL"))}
+        {"pS", get_ancillary(internal::get_line_chunk(lines, "#PS"))},
+        {"rhoV", get_ancillary(internal::get_line_chunk(lines, "#DV"))},
+        {"rhoL", get_ancillary(internal::get_line_chunk(lines, "#DL"))}
     };
 }
 
