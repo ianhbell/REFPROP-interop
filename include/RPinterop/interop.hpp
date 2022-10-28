@@ -657,18 +657,18 @@ nlohmann::json get_ancillary(const vector<string>& lines){
     if (model_key == "PS"){
         type_key = "pL";
     }
-    else if (sets{"DL1", "DL2"}.count(model_key) > 0){
+    else if (sets{"DL1", "DL2"}.count(modelname) > 0){
         type_key = "rhoLnoexp";
     }
     else if (model_key == "DL"){
         type_key = "rhoL";
-        if (seti{1,3,5}.count(key_index) > 0){
+        if (seti{2,4,6}.count(key_index) > 0){
             for (auto&t_ : t){ t_ /= 3; }
         }
     }
     else if (model_key == "DV"){
         type_key = "rhoV";
-        if (seti{1,3,5}.count(key_index) > 0){
+        if (seti{2,4,6}.count(key_index) > 0){
             for (auto&t_ : t){ t_ /= 3; }
         }
     }
