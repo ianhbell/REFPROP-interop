@@ -34,7 +34,7 @@ int main(int argc, char **argv)
                 
                 try{
                     RPinterop::FLDfile FLD(entry.path());
-                    nlohmann::json j = FLD.make_json(name).dump(1);
+                    std::string j = FLD.make_json(name).dump(1);
                     
                     auto warnings = FLD.get_warnings();
                     auto errors = FLD.get_errors();
