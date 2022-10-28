@@ -473,6 +473,11 @@ struct HeaderResult{
         }
         else if (k == "INCHI"){
             StdInChIstr = val;
+            // The string must start with InChI=, otherwise it is not a standard InChI string
+            // so prepend the necessary prefix
+            if (StdInChIstr.find("InChI=") != 0){
+                StdInChIstr = "InChI=" + StdInChIstr;
+            }
         }
         else if (k == "INCHIKEY"){
             StdInChIKey = val;
