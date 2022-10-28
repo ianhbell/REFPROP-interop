@@ -849,7 +849,7 @@ public:
               {"GWP500", -9999999999},
               {"HH", -999999999},
               {"Name", name},
-              {"ODP", -99999999},
+              {"ODP", head.ODP},
               {"PH", -999999}
             }},
             // {"FORMULA", formula_from_inchi(head.StdInChIstr)},
