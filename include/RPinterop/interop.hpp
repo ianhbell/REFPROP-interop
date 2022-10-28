@@ -205,6 +205,7 @@ ResidualResult convert_FEQ(const vector<string>& lines){
     std::size_t Nnormalcount = termcounts[1]; // Parameters per term
     std::size_t NGaussian = termcounts[2];
     std::size_t NGaussiancount = termcounts[3]; // Parameters per term
+    std::size_t NGao = termcounts[4];
 
     auto read_normal = [&readnline](const vector<string> &lines, size_t Nnormalcount) -> nlohmann::json {
         std::vector<double> n, t, d, l, g;
@@ -310,6 +311,24 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         if(!nonanalyt.empty()){ o.push_back(nonanalyt); }
         return o;
     };
+    auto read_Gao = [&readnline](const vector<string> &lines, size_t NGaocount) -> nlohmann::json{
+        std::vector<double> n,t,d,eta,beta,gamma,epsilon,b;
+        for (auto& line : lines){
+            auto z = readnline(line, NGaocount);
+            assert(NGaussiancount == 12);
+            n.push_back(z[0]);
+            t.push_back(z[1]);
+            d.push_back(z[2]);
+            eta.push_back(z[5]);
+            beta.push_back(z[6]);
+            gamma.push_back(z[7]);
+            epsilon.push_back(z[8]);
+            b.push_back(z[9]);
+        }
+        return {{"n", n}, {"t", t}, {"d", d},
+            {"eta", eta}, {"beta", beta}, {"gamma", gamma}, {"epsilon", epsilon}, {"b", b},
+            {"type", "ResidualHelmholtzGaoB"}};
+    };
 
     res.alphar = nlohmann::json::array();
     if (Nnormal > 0){
@@ -321,6 +340,10 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         for (auto thing : read_Gaussian(l, NGaussiancount)){
             res.alphar.push_back(thing);
         }
+    }
+    if (NGao > 0){
+        auto l = std::vector<std::string>(lines.begin()+i+NGaussian+Nnormal, lines.begin()+i+Nnormal+NGaussian+NGao);
+        res.alphar.push_back(read_Gao(l, 12));
     }
     return res;
 }
