@@ -194,9 +194,27 @@ class FLDDeconstructor:
 
         InChIKey = 'UNKNOWN'
         try:
-            self.get_keyed_line(self.lines, '!Standard InChI Key', lambda x: x)[0]
+            InChIKey = self.get_keyed_line(self.lines, '!Standard InChI Key', lambda x: x)[0]
         except KeyError:
             print('Unable to find InChI key')
+
+        GWP100 = 'UNKNOWN'
+        try:
+            GWP100 = float(self.get_keyed_line(self.lines, '!GWP', lambda x: x)[0])
+        except KeyError:
+            print('Unable to find GWP')
+
+        ODP = 'UNKNOWN'
+        try:
+            ODP = float(self.get_keyed_line(self.lines, '!ODP', lambda x: x)[0])
+        except KeyError:
+            print('Unable to find ODP')
+
+        ASHRAE34 = 'UNKNOWN'
+        try:
+            ASHRAE34 = self.get_keyed_line(self.lines, '!Safety Group', lambda x: x)[0]
+        except KeyError:
+            print('Unable to find Safety group')
         
         return {
             "2DPNG_URL": f"http://www.chemspider.com/ImagesHandler.ashx?id={CHEMSPIDER_ID}",
@@ -204,15 +222,15 @@ class FLDDeconstructor:
             "CAS": self.get_keyed_line(self.lines, '!CAS number', lambda x: x)[0],
             "CHEMSPIDER_ID": CHEMSPIDER_ID,
             "ENVIRONMENTAL": {
-              "ASHRAE34": "?",
+              "ASHRAE34": ASHRAE34,
               "FH": 0,
-              "GWP100": 0.0,
+              "GWP100": GWP100,
               "GWP20": 0.0,
               "GWP500": 0.0,
               "HH": 0,
-              "Name": "",
-              "ODP": -1e30,
-              "PH": 0
+              "Name": name,
+              "ODP": ODP,
+              "PH": 1e30
             },
             "FORMULA": self.formula_from_inchi(),
             "INCHI_KEY": InChIKey,
