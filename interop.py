@@ -732,6 +732,7 @@ class HMXDeconstructor:
         iMXM = lines_starts_with("#MXM", self.lines)
         departure_functions = []
 
+        # This is a placeholder for XR0 models
         departure_functions.append(dict(
             type='GERG-2008',
             n = [],
