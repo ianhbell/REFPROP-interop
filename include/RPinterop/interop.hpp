@@ -291,7 +291,7 @@ ResidualResult convert_FEQ(const vector<string>& lines){
                 normal["m"].push_back(z[4]);
             }
             else if (z[3] == 2 && z[4] == 2 && z[9] != 0 && z[10] != 0 && z[11] != 0){
-                // It is a non-analytic Gaussian term
+                // It is a non-analytic term
                 if (nonanalyt.empty()){ init_nonanalyt(); }
                 nonanalyt["n"].push_back(z[0]);
                 nonanalyt["b"].push_back(z[5]);
