@@ -731,7 +731,7 @@ public:
               {"T_units", "K"},
               {"hmolar", -99999999999.0},
               {"hmolar_units", "J/mol"},
-              {"p", feq.pcrit_kPa},
+              {"p", feq.pcrit_kPa*1e3},
               {"p_units", "Pa"},
               {"rhomolar", feq.rhored_molL*1e3},
               {"rhomolar_units", "mol/m^3"},
