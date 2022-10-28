@@ -54,6 +54,16 @@ string strip_line_comment(const string& line){
         return line.substr(0, ipos);
     }
 }
+string strip_trailing_whitespace(const string& line){
+    auto ipos = line.find_first_of(" \t\n\v\f\r");
+    if (ipos == std::string::npos){
+        // No whitespace found, return whole string
+        return line;
+    }
+    else{
+        return line.substr(0, ipos);
+    }
+}
 
 std::vector<std::string> get_line_chunk(
                                         const std::vector<std::string>& lines,
@@ -534,13 +544,15 @@ HeaderResult convert_header(const vector<string>& lines){
     if (h.RPversion == "10.0"){
         for (; i < lines.size(); ++i){
             std::smatch match;
+            // If an empty string
             if (lines[i].find_first_not_of(" \t\n\v\f\r") == std::string::npos){
                 break;
             }
             if (!std::regex_search(lines[i], match, std::regex(R"(:(\w+):)"))){
                 throw std::invalid_argument("This line doesn't contain a key contained in colons: "+lines[i]+"; it has length of "+std::to_string(lines[i].size()));
             }
-            h.set(internal::to_upper(match[1]), lines[i]);
+            using namespace internal;
+            h.set(internal::to_upper(match[1]), strip_trailing_whitespace(strip_line_comment(lines[i])));
         }
     }
     else if (h.RPversion == "9.0" || h.RPversion == "8.0"){
