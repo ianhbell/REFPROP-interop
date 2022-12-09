@@ -143,7 +143,6 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         if(!lines[j].empty() && (indEOS == 0)){
             std::string init = lines[j].substr(indEOS+6, lines[j].size()-6);
             DOI_EOS = internal::strip_trailing_whitespace(init);
-            std::cout << DOI_EOS << std::endl;
         }
                                               
         if(!lines[j].empty() && (ind == 0)){
