@@ -109,6 +109,7 @@ struct ResidualResult{
     double MM_kgkmol,Ttriple_K,ptriple_kPa,rhotriple_molL,Tnbp_K,acentric,
     Tcrit_K,pcrit_kPa,rhocrit_molL,Tred_K,rhored_molL,R;
     nlohmann::json alphar;
+    std::string DOI_EOS = "";
 };
 
 /**
@@ -129,12 +130,22 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         throw std::invalid_argument("Cannot parse this EOS type:" + model_key);
     }
     
+    // Find the DOI if present
+    std::string DOI_EOS = "??";
     
     // Find the first non-header row;
     size_t i = std::string::npos; 
     for (auto j = 2; j < lines.size(); ++j){
         // First line not started by element in {:,?,!}, stop
         auto ind = lines[j].find_first_of(":?!");
+        
+        auto indEOS = lines[j].find(":DOI: ");
+        if(!lines[j].empty() && (indEOS == 0)){
+            std::string init = lines[j].substr(indEOS+6, lines[j].size()-6);
+            DOI_EOS = internal::strip_trailing_whitespace(init);
+            std::cout << DOI_EOS << std::endl;
+        }
+                                              
         if(!lines[j].empty() && (ind == 0)){
             continue;
         } 
@@ -198,6 +209,7 @@ ResidualResult convert_FEQ(const vector<string>& lines){
     res.Tred_K = r[0];
     res.rhored_molL = r[1];
     res.R = read1();
+    res.DOI_EOS = DOI_EOS;
 
     // And now we read the EOS
     auto termcounts = readn(-1);
@@ -794,7 +806,7 @@ public:
 
         nlohmann::json EOS = {
           {"BibTeX_CP0", ""},
-          {"BibTeX_EOS", "XXX-X-XXXX"},
+          {"BibTeX_EOS", feq.DOI_EOS},
           {"STATES", STATES},
           {"T_max", feq.Tmax_K},
           {"T_max_units", "K"},
