@@ -693,6 +693,9 @@ nlohmann::json get_ancillary(const vector<string>& lines){
     }
     else if (sets{"DL1", "DL2"}.count(modelname) > 0){
         type_key = "rhoLnoexp";
+        if (seti{2,4,6}.count(key_index) > 0){
+            for (auto&t_ : t){ t_ /= 3; }
+        }
     }
     else if (model_key == "DL"){
         type_key = "rhoL";
