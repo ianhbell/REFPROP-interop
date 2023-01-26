@@ -693,20 +693,24 @@ nlohmann::json get_ancillary(const vector<string>& lines){
     }
     else if (sets{"DL1", "DL2"}.count(modelname) > 0){
         type_key = "rhoLnoexp";
+        // Convert DL2 to DL1
         if (seti{2,4,6}.count(key_index) > 0){
             for (auto&t_ : t){ t_ /= 3; }
+            desc = get_ancillary_description("DL1");
         }
     }
     else if (model_key == "DL"){
         type_key = "rhoL";
         if (seti{2,4,6}.count(key_index) > 0){
             for (auto&t_ : t){ t_ /= 3; }
+            desc = get_ancillary_description("DL" + std::to_string(key_index-1));
         }
     }
     else if (model_key == "DV"){
         type_key = "rhoV";
         if (seti{2,4,6}.count(key_index) > 0){
             for (auto&t_ : t){ t_ /= 3; }
+            desc = get_ancillary_description("DV" + std::to_string(key_index-1));
         }
     }
     else{
