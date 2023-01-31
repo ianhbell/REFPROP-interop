@@ -320,6 +320,7 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         nlohmann::json o = nlohmann::json::array();
         if(!normal.empty()){ o.push_back(normal); }
         if(!nonanalyt.empty()){ o.push_back(nonanalyt); }
+        if(!R125.empty()){ o.push_back(R125); }
         return o;
     };
     auto read_Gao = [&readnline](const vector<string> &lines, size_t NGaocount) -> nlohmann::json{
