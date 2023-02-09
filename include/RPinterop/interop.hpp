@@ -295,11 +295,11 @@ ResidualResult convert_FEQ(const vector<string>& lines){
             else if (z[5] == -1 && z[6] == -1 && z[7] == 0 && z[8] == 0 && z[9] == 0 && z[10] == 0 && z[11] == 0){
                 // It is a R125 term from Lemmon, 2005
                 if (R125.empty()){ init_R125(); }
-                normal["n"].push_back(z[0]);
-                normal["t"].push_back(z[1]);
-                normal["d"].push_back(z[2]);
-                normal["l"].push_back(z[3]);
-                normal["m"].push_back(z[4]);
+                R125["n"].push_back(z[0]);
+                R125["t"].push_back(z[1]);
+                R125["d"].push_back(z[2]);
+                R125["l"].push_back(z[3]);
+                R125["m"].push_back(z[4]);
             }
             else if (z[3] == 2 && z[4] == 2 && z[9] != 0 && z[10] != 0 && z[11] != 0){
                 // It is a non-analytic term
