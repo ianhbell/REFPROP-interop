@@ -252,13 +252,21 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         // and they are disambiguated based upon the parameters in the term
         // (this is not documented anywhere in REFPROP)
 
-        nlohmann::json normal, nonanalyt, R125;
+        nlohmann::json normal, nonanalyt, R125, doubleexp;
         auto init_normal = [&normal](){
             std::vector<double> _;
             normal = {
                 {"n", _}, {"t", _}, {"d", _}, 
                 {"eta", _}, {"beta", _}, {"gamma", _}, {"epsilon", _},
                 {"type", "ResidualHelmholtzGaussian"}
+            };
+        };
+        auto init_doubleexp = [&doubleexp](){
+            std::vector<double> _;
+            doubleexp = {
+                {"n", _}, {"t", _}, {"d", _},
+                {"ld", _}, {"gd", _}, {"lt", _}, {"gt", _},
+                {"type", "ResidualHelmholtzDoubleExponential"}
             };
         };
         auto init_nonanalyt = [&nonanalyt](){
@@ -301,6 +309,32 @@ ResidualResult convert_FEQ(const vector<string>& lines){
                 R125["l"].push_back(z[3]);
                 R125["m"].push_back(z[4]);
             }
+            else if (z[4] == 1 && z[1] == 0 && z[8] == 0 && z[9] == 0 && z[10] == 0 && z[11] == 0){
+                // It is a methanol term from de Reuck IUPAC monograph
+                // Conversions from de Reuck were done to get in REFPROP-compatible format,
+                // and then the format is again converted to go from REFPROP format to double-exponential
+                // form accepted in teqp.
+                // The term started life in the form N_i*delta^(r_i)*exp(c_i*C_0*tau - b_i - (j_i*C_1*delta)^(k_i))
+                // and then converted to the form
+                // N_i*delta^d_i*EXP[eta_i*(delta)^de_i+beta_i*(tau_i-gamma_i)]
+                // and is once again converted, where the leading coefficient becomes
+                // N_i*exp(-beta_i*gamma_i)
+                // td are 0
+                // lt are 1
+                // The term in teqp is defined as:
+                //
+                //\sum_i n_i \delta^{d_i} \tau^{t_i} \exp(-\gamma_{d,i}\delta^{l_{d,i}}-\gamma_{t,i}\tau^{l_{t,i}})
+                // where gt and
+                double N=z[0], d=z[2], de=z[3], eta=z[5], beta=z[6], gamma=z[7];
+                if (doubleexp.empty()){ init_doubleexp(); }
+                doubleexp["n"].push_back(N*exp(-beta*gamma));
+                doubleexp["t"].push_back(0);
+                doubleexp["d"].push_back(d);
+                doubleexp["gd"].push_back(-eta);
+                doubleexp["ld"].push_back(de);
+                doubleexp["gt"].push_back(-beta);
+                doubleexp["lt"].push_back(1);
+            }
             else if (z[3] == 2 && z[4] == 2 && z[9] != 0 && z[10] != 0 && z[11] != 0){
                 // It is a non-analytic term
                 if (nonanalyt.empty()){ init_nonanalyt(); }
@@ -321,13 +355,14 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         if(!normal.empty()){ o.push_back(normal); }
         if(!nonanalyt.empty()){ o.push_back(nonanalyt); }
         if(!R125.empty()){ o.push_back(R125); }
+        if(!doubleexp.empty()){ o.push_back(doubleexp); }
         return o;
     };
     auto read_Gao = [&readnline](const vector<string> &lines, size_t NGaocount) -> nlohmann::json{
         std::vector<double> n,t,d,eta,beta,gamma,epsilon,b;
         for (auto& line : lines){
             auto z = readnline(line, NGaocount);
-            assert(NGaussiancount == 12);
+            assert(NGaocount == 12);
             n.push_back(z[0]);
             t.push_back(z[1]);
             d.push_back(z[2]);
