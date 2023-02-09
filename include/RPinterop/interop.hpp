@@ -951,7 +951,7 @@ public:
             ancillaries = get_all_ancillaries(lines);
         }
         catch(std::exception &e){
-            warnings.push_back("Could not load ancillaries");
+            warnings.push_back(std::string("Could not load ancillaries; message:") + e.what());
 //            std::cerr << e.what() << std::endl;
         }
 
