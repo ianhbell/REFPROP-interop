@@ -652,6 +652,7 @@ auto get_ancillary_description(const string& key){
         {"DL2",  "D=Dc*[1+SUM(Ni*Theta^(ti/3))]"},
         {"DL3",  "D=Dc*EXP[SUM(Ni*Theta^ti)]"},
         {"DL4",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))]"},
+        {"DL5",  "D=Dc*EXP[SUM(Ni*Theta^ti)*Tc/T]"},
         {"DL6",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))*Tc/T]"},
         {"DV4",  "D=Dc*EXP[SUM(Ni*Theta^(ti/3))]"},
         {"DV5",  "D=Dc*EXP[SUM(Ni*Theta^ti)*Tc/T]"},
