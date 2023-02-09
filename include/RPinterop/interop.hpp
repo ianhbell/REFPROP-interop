@@ -342,9 +342,9 @@ ResidualResult convert_FEQ(const vector<string>& lines){
                 nonanalyt["b"].push_back(z[5]);
                 nonanalyt["beta"].push_back(z[6]);
                 nonanalyt["A"].push_back(z[7]);
-                nonanalyt["B"].push_back(z[8]);
-                nonanalyt["C"].push_back(z[9]);
-                nonanalyt["D"].push_back(z[10]);
+                nonanalyt["C"].push_back(z[8]);
+                nonanalyt["D"].push_back(z[9]);
+                nonanalyt["B"].push_back(z[10]);
                 nonanalyt["a"].push_back(z[11]);
             }
             else{
