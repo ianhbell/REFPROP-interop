@@ -107,7 +107,7 @@ class AncillaryFitter:
 
 def ancillary_injecter(*, RP, FLD, teqp, plot=True):
     ierr = RP.SETFLUIDSdll(FLD)
-    if ierr != 0:
+    if ierr > 0:
         print(RP.ERRMSGdll(ierr))
         quit()
 
