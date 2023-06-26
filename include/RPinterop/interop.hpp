@@ -1002,7 +1002,7 @@ public:
               {"smolar_units", "J/mol/K"}
             }},
             {"sat_min_liquid", {
-              {"T", feq.Ttriple_K},
+              {"T", feq.Tmin_K},
               {"T_units", "K"},
               {"hmolar", -999999999999.0},
               {"hmolar_units", "J/mol"},
@@ -1014,7 +1014,7 @@ public:
               {"smolar_units", "J/mol/K"}
             }},
             {"sat_min_vapor", {
-              {"T", feq.Ttriple_K},
+              {"T", feq.Tmin_K},
               {"T_units", "K"},
               {"hmolar", 9999999999999.0},
               {"hmolar_units", "J/mol"},
