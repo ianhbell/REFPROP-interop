@@ -112,6 +112,183 @@ struct ResidualResult{
     std::string DOI_EOS = "";
 };
 
+auto BWR2FEQ(const std::vector<std::string>& lines){
+    ResidualResult res;
+    
+    auto read1strline = [](const string &line){
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(line), " ");
+        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+line); }
+        return vals[0];
+    };
+    auto model_key = read1strline(lines[1]);
+    
+    // Find the DOI if present
+    std::string DOI_EOS = "??";
+    
+    // Find the first non-header row;
+    size_t i = std::string::npos;
+    for (auto j = 2; j < lines.size(); ++j){
+        // First line not started by element in {:,?,!}, stop
+        auto ind = lines[j].find_first_of(":?!");
+        
+        auto indEOS = lines[j].find(":DOI: ");
+        if(!lines[j].empty() && (indEOS == 0)){
+            std::string init = lines[j].substr(indEOS+6, lines[j].size()-6);
+            DOI_EOS = internal::strip_trailing_whitespace(init);
+        }
+                                              
+        if(!lines[j].empty() && (ind == 0)){
+            continue;
+        }
+        i = j; break;
+    }
+    auto readnline = [](const string& line, int n){
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(line), " ");
+        std::vector<double> o;
+        for (auto v : vals){
+            if (!v.empty()){
+                std::string v_e = std::regex_replace(v, std::regex("[Dd]"), "e");
+                std::string v_ew = std::regex_replace(v_e, std::regex("\\s+"), "");
+                if (v_ew.empty()){
+                    continue;
+                }
+                o.push_back(strtod(v_ew.c_str(), nullptr));
+            }
+        }
+        if (n > 0){
+            if (o.size() != n){ throw std::invalid_argument("Unable to read "+std::to_string(n)+" numbers from this line:"+line); }
+        }
+        return o;
+    };
+    auto readn = [&lines, &i, &readnline](int n){
+        auto vals = readnline(lines[i], n);
+        i++;
+        return vals;
+    };
+    auto read1str = [&lines, &i](){
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(lines[i]), " ");
+        i++;
+        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+lines[i]); }
+        return vals[0];
+    };
+    auto read1 = [&lines, &i](){
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(lines[i]), " ");
+        i++;
+        if (vals.empty()){throw std::invalid_argument("Unable to read one number from this line:"+lines[i]); }
+        return strtod(vals[0].c_str(), nullptr);
+    };
+    
+    // Read in all the metadata parameters
+    res.Tmin_K = read1();
+    res.Tmax_K = read1();
+    res.pmax_kPa = read1();
+    res.rhomax_molL = read1();
+    res.cp0_pointer = read1str();
+    res.MM_kgkmol = read1();
+    res.Ttriple_K = read1();
+    res.ptriple_kPa = read1();
+    res.rhotriple_molL = read1();
+    res.Tnbp_K = read1();
+    res.acentric = read1();
+    auto c = readn(3);
+    res.Tcrit_K = c[0];
+    res.pcrit_kPa = c[1];
+    res.rhocrit_molL = c[2];
+    auto reds = readn(2);
+    res.Tred_K = reds[0];
+    res.rhored_molL = reds[1];
+    double gamma_FLD = read1();
+    double R_barL = read1();
+    res.R = R_barL*100.0; // MBWR in FLD files uses L-bar for energy unit
+    res.DOI_EOS = DOI_EOS;
+    
+    double gamma_aspublished = -1/(gamma_FLD*gamma_FLD);
+    // Leading coefficient in exp() in exponential term is then:
+    double g = -gamma_aspublished*(res.rhocrit_molL*res.rhocrit_molL);
+    
+    double l = 2.0; // exponent on delta in exponential term
+
+    // And now we read the EOS coefficients in
+    auto termcounts = readn(-1); // Should always be 32, 1
+    // Collect all the coefficients
+    std::vector<double> cc = {0.0}; // We are going to 1-index for simplicity in what follows
+    for (auto j = i; j < lines.size(); ++j){
+        for (auto& val : readnline(lines[j], -1)){
+            cc.push_back(val*100); // Pressures in the MBWR formulation in REFPROP are in bar, so convert to kPa
+        }
+    }
+    
+    // Collectors for generated terms
+    std::vector<double> n_, t_, d_, l_, g_;
+    auto addterm = [&](double n, double t, double d, double l, double g){
+        n_.push_back(n);
+        t_.push_back(t);
+        d_.push_back(d);
+        l_.push_back(l);
+        g_.push_back(g);
+//        std::cout << n << "    " << t << "    " << d << "    " << l << "    " << g << "    " << std::endl;
+    };
+    
+    std::vector<double> t2 = {0,1,0.5,0,-1,-2,1,0,-1,-2,1,0,-1,0,-1,-2,-1,-1,-2,-2}; // exponents on T in normal part
+    std::vector<double> d2 = {0,2,2,2,2,2,3,3,3,3,4,4,4,5,6,6,7,8,8,9}; // exponents on density in normal part
+    std::vector<double> s = {-2,-3,-2,-4,-2,-3,-2,-4,-2,-3,-2,-3,-4}; // exponents on T in exponential part
+    std::vector<double> r = {3,3,5,5,7,7,9,9,11,11,13,13,13}; // exponents on density in exponential part
+
+    // For polynomial term, see page 26 of Span monograph, straightforward conversion to alphar contribution
+    // Converting from Eq. 3.28 to 3.26 in the Span formulation, but with an additional factor of d2[i]-1 in the denominator
+    // to match Younglove and McLinden, Eq. B6. This is also what is done in REFPROP
+    for (int i =1; i < 20; ++i){
+        addterm(cc[i]*pow(res.rhored_molL, d2[i]-1)*pow(res.Tred_K, t2[i]-1)/res.R/(d2[i]-1), 1-t2[i], d2[i]-1, 0, 0);
+    }
+    
+    // Powers of gamma^k, to be used in the denominators of exponential terms
+    double g1 = g, g2 = g1*g, g3 = g2*g, g4 = g3*g, g5 = g4*g, g6 = g5*g;
+    
+    // For exponential part of Z-1...
+    // See Table 3.5 from Span book. But first convert leading coefficients to the form of Eq 3.26,
+    // but here *without* the mysterious term in the denominator
+    std::vector<double> n(20, 0.0);
+    for (auto i = 20; i < 33; ++i)
+        n.push_back(cc[i]*pow(res.rhored_molL, r[i-20]-1)*pow(res.Tred_K, s[i-20]-1)/res.R);
+    
+    addterm(n[20]/(2*g1) + n[22]/(2*g2) + n[24]/g3 + 3*n[26]/g4 + 12*n[28]/g5 + 60*n[30]/g6, 3, 0, 0, 0);
+    addterm(n[21]/(2*g1) + n[25]/g3 + 12*n[29]/g5 + 60*n[31]/g6, 4, 0, 0, 0);
+    addterm(n[23]/(2*g2) + 3*n[27]/g4 + 60*n[32]/g6, 5, 0, 0, 0);
+
+    addterm(-(n[20]/(2*g1) + n[22]/(2*g2) + n[24]/g3 + 3*n[26]/g4 + 12*n[28]/g5 + 60*n[30]/g6), 3, 0, l, g);
+    addterm(-(n[21]/(2*g1) + n[25]/g3 + 12*n[29]/g5 + 60*n[31]/g6), 4, 0, l, g);
+    addterm(-(n[23]/(2*g2) + 3*n[27]/g4 + 60*n[32]/g6), 5, 0, l, g);
+
+    addterm(-n[22]/(2*g1) - n[24]/g2 -3*n[26]/g3 - 12*n[28]/g4 - 60*n[30]/g5, 3, 2, l, g);
+    addterm(-n[25]/g2 - 12*n[29]/g4 -60*n[31]/g5, 4, 2, l, g);
+    addterm(-n[23]/2/g1 - 3*n[27]/g3 -60*n[32]/g5, 5, 2, l, g);
+
+    addterm(-n[24]/2/g1 - 3*n[26]/2/g2 - 6*n[28]/g3-30*n[30]/g4, 3, 4, l, g);
+    addterm(-n[25]/2/g1 - 6*n[29]/g3 - 30*n[31]/g4, 4, 4, l, g);
+    addterm(-3*n[27]/2/g2 - 30*n[32]/g4, 5, 4, l, g);
+
+    addterm(-n[26]/2/g1 - 2*n[28]/g2 - 10*n[30]/g3, 3, 6, l, g);
+    addterm(-2*n[29]/g2 - 10*n[31]/g3, 4, 6, l, g);
+    addterm(-n[27]/2/g1 - 10*n[32]/g3, 5, 6, l, g);
+
+    addterm(-n[28]/2/g1 - 5*n[30]/2/g2, 3, 8, l, g);
+    addterm(-n[29]/2/g1 - 5*n[31]/2/g2, 4, 8, l, g);
+    addterm(-5*n[32]/2/g2, 5, 8, l, g);
+
+    addterm(-n[30]/2/g1, 3, 10, l, g);
+    addterm(-n[31]/2/g1, 4, 10, l, g);
+    addterm(-n[32]/2/g1, 5, 10, l, g);
+
+    res.alphar = nlohmann::json::array();
+    nlohmann::json term = {{"type", "ResidualHelmholtzExponential"}, {"n", n_}, {"t", t_}, {"d", d_}, {"l", l_}, {"g", g_}};
+    res.alphar.push_back(term);
+    return res;
+}
+
 /**
 Given a string that contains an EOS block, return its
 JSON representation
@@ -126,7 +303,10 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         return vals[0];
     };
     auto model_key = read1strline(lines[1]);
-    if (model_key != "FEQ"){
+    if (model_key == "BWR"){
+        return BWR2FEQ(lines);
+    }
+    else if (model_key != "FEQ"){
         throw std::invalid_argument("Cannot parse this EOS type:" + model_key);
     }
     
