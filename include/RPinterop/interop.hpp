@@ -16,88 +16,169 @@ using std::string;
 
 namespace RPinterop{
 
-namespace internal{
+    namespace internal{
 
-// for string delimiter (https://stackoverflow.com/a/46931770)
-vector<string> strsplit (string s, string delimiter) {
-    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-    string token;
-    vector<string> res;
-    
-    while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
-        token = s.substr (pos_start, pos_end - pos_start);
-        pos_start = pos_end + delim_len;
-        res.push_back (token);
+    // for string delimiter (https://stackoverflow.com/a/46931770)
+    vector<string> strsplit (string s, string delimiter) {
+        size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+        string token;
+        vector<string> res;
+        
+        while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
+            token = s.substr (pos_start, pos_end - pos_start);
+            pos_start = pos_end + delim_len;
+            res.push_back (token);
+        }
+        
+        res.push_back (s.substr (pos_start));
+        return res;
     }
-    
-    res.push_back (s.substr (pos_start));
-    return res;
+    string strjoin(const vector<string> &lines, const std::string& delim){
+        if (lines.empty()){ return ""; }
+        else{
+            std::string o = lines[0];
+            for (auto i = 1; i < lines.size(); ++i){
+                o += delim + lines[i];
+            }
+            return o;
+        }
+    }
+
+    string strip_line_comment(const string& line){
+        auto ipos = line.find_first_of("!");
+        if (ipos == std::string::npos){
+            // No comment found, return whole string
+            return line;
+        }
+        else{
+            return line.substr(0, ipos);
+        }
+    }
+    string strip_trailing_whitespace(const string& line){
+        auto ipos = line.find_first_of(" \t\n\v\f\r");
+        if (ipos == std::string::npos){
+            // No whitespace found, return whole string
+            return line;
+        }
+        else{
+            return line.substr(0, ipos);
+        }
+    }
+
+    std::vector<std::string> get_line_chunk(
+                                            const std::vector<std::string>& lines,
+                                            const string& starting_key
+                                            )
+    {
+        // block starts with the key
+        size_t istart = std::string::npos;
+        for (auto i = 0; i < lines.size(); ++i){
+            if (lines[i].find(starting_key) == 0){
+                istart = i; break;
+            }
+        }
+        if (istart == std::string::npos){
+            throw std::invalid_argument("Block starting with "+starting_key+" was not found");
+        }
+        // block ends with an empty line
+        size_t iend = std::string::npos;
+        for (auto i = istart+1; i < lines.size(); ++i){
+            if (lines[i].find_first_not_of(" \t\n\v\f\r") == std::string::npos){
+                iend = i; break;
+            }
+        }
+        return std::vector<std::string>(lines.begin()+istart, lines.begin()+iend);
+    }
+
+    string to_upper(const string& str){
+        auto s = str; // copy :(
+        std::locale locale;
+        auto f = [&locale] (char ch) { return std::use_facet<std::ctype<char>>(locale).toupper(ch); };
+        std::transform(s.begin(), s.end(), s.begin(), f);
+        return s;
+    }
 }
-string strjoin(const vector<string> &lines, const std::string& delim){
-    if (lines.empty()){ return ""; }
-    else{
-        std::string o = lines[0];
-        for (auto i = 1; i < lines.size(); ++i){
-            o += delim + lines[i];
+
+/***
+ A parsing class that takes in a set of lines and line-by-line reads in things
+ There are methods that increment the line counter, using the next line
+ */
+class LineParser{
+private:
+    const std::vector<std::string>& lines;
+    std::size_t i;
+public:
+    LineParser(const std::vector<std::string>& lines) : lines(lines){}
+    
+    /// Get a reference to the next line to be parsed
+    const auto& get_next_line(){ return lines[i]; }
+    /// Set the index of the next line
+    void set_i(std::size_t i){ this->i = i; }
+    /// Get the index of the next line
+    auto get_i(){ return i; }
+    
+    auto read_allnum_from_line(const std::string& line) const{
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(line), " ");
+        std::vector<double> o;
+        for (auto v : vals){
+            if (!v.empty()){
+                // Replace the D or d in FORTRAN scientific notation with e
+                // because C++ (and everything else) uses e for exponentiation in
+                // scientific notation
+                std::string v_e = std::regex_replace(v, std::regex("[Dd]"), "e");
+                // Replace spaces with nothing
+                std::string v_ew = std::regex_replace(v_e, std::regex("\\s+"), "");
+                if (v_ew.empty()){
+                    continue;
+                }
+                o.push_back(strtod(v_ew.c_str(), nullptr));
+            }
         }
         return o;
     }
-}
-
-string strip_line_comment(const string& line){
-    auto ipos = line.find_first_of("!");
-    if (ipos == std::string::npos){
-        // No comment found, return whole string
-        return line;
-    }
-    else{
-        return line.substr(0, ipos);
-    }
-}
-string strip_trailing_whitespace(const string& line){
-    auto ipos = line.find_first_of(" \t\n\v\f\r");
-    if (ipos == std::string::npos){
-        // No whitespace found, return whole string
-        return line;
-    }
-    else{
-        return line.substr(0, ipos);
-    }
-}
-
-std::vector<std::string> get_line_chunk(
-                                        const std::vector<std::string>& lines,
-                                        const string& starting_key
-                                        )
-{
-    // block starts with the key
-    size_t istart = std::string::npos;
-    for (auto i = 0; i < lines.size(); ++i){
-        if (lines[i].find(starting_key) == 0){
-            istart = i; break;
+    // Read in a fixed number of numbers (floats or integers) from the line
+    auto read_Nnum_from_line(const std::string& line, std::size_t n) const{
+        auto vals = read_allnum_from_line(line);
+        if (n > 0){
+            if (vals.size() != n){ throw std::invalid_argument("Unable to read "+std::to_string(n)+" numbers from this line:"+line); }
         }
+        return vals;
     }
-    if (istart == std::string::npos){
-        throw std::invalid_argument("Block starting with "+starting_key+" was not found");
+    /// Read in the strings from the line, assuming (possibly multiple) " " as the string delimiter
+    auto read_strs_from_line(const string &line) const {
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(line), " ");
+        return vals;
     }
-    // block ends with an empty line
-    size_t iend = std::string::npos;
-    for (auto i = istart+1; i < lines.size(); ++i){
-        if (lines[i].find_first_not_of(" \t\n\v\f\r") == std::string::npos){
-            iend = i; break;
-        }
+    /// Read in one string from the line
+    auto read_1str_from_line(const string &line) const {
+        using namespace internal;
+        auto vals = strsplit(strip_line_comment(line), " ");
+        if (vals.empty()){ throw std::invalid_argument("Unable to read at least one string from this line:"+line); }
+        return vals[0];
     }
-    return std::vector<std::string>(lines.begin()+istart, lines.begin()+iend);
-}
-
-string to_upper(const string& str){
-    auto s = str; // copy :(
-    std::locale locale;
-    auto f = [&locale] (char ch) { return std::use_facet<std::ctype<char>>(locale).toupper(ch); };
-    std::transform(s.begin(), s.end(), s.begin(), f);
-    return s;
-}
-}
+    
+    /// Read in a fixed number of numbers (floats or integers) from the next line and increment the counter
+    auto read_Nnum_and_increment(std::size_t n){
+        auto vals = read_Nnum_from_line(get_next_line(), n);
+        i++;
+        return vals;
+    };
+    /// Read in all the numbers (floats or integers) from the next line and increment the counter
+    auto read_allnum_and_increment(){
+        auto vals = read_allnum_from_line(get_next_line());
+        i++;
+        return vals;
+    };
+    /// Read in 1 space-delimited string from the next line and increment the counter
+    auto read_1str_and_increment(){
+        auto val = read_1str_from_line(get_next_line());
+        i++;
+        return val;
+    }
+    
+};
 
 /**
  * Things that are obtained from parsing a residual Helmholtz
@@ -114,14 +195,9 @@ struct ResidualResult{
 
 auto BWR2FEQ(const std::vector<std::string>& lines){
     ResidualResult res;
+    LineParser parser(lines);
     
-    auto read1strline = [](const string &line){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(line), " ");
-        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+line); }
-        return vals[0];
-    };
-    auto model_key = read1strline(lines[1]);
+    auto model_key = parser.read_1str_from_line(lines[1]);
     
     // Find the DOI if present
     std::string DOI_EOS = "??";
@@ -143,44 +219,14 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
         }
         i = j; break;
     }
-    auto readnline = [](const string& line, int n){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(line), " ");
-        std::vector<double> o;
-        for (auto v : vals){
-            if (!v.empty()){
-                std::string v_e = std::regex_replace(v, std::regex("[Dd]"), "e");
-                std::string v_ew = std::regex_replace(v_e, std::regex("\\s+"), "");
-                if (v_ew.empty()){
-                    continue;
-                }
-                o.push_back(strtod(v_ew.c_str(), nullptr));
-            }
-        }
-        if (n > 0){
-            if (o.size() != n){ throw std::invalid_argument("Unable to read "+std::to_string(n)+" numbers from this line:"+line); }
-        }
-        return o;
-    };
-    auto readn = [&lines, &i, &readnline](int n){
-        auto vals = readnline(lines[i], n);
-        i++;
-        return vals;
-    };
-    auto read1str = [&lines, &i](){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(lines[i]), " ");
-        i++;
-        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+lines[i]); }
-        return vals[0];
-    };
-    auto read1 = [&lines, &i](){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(lines[i]), " ");
-        i++;
-        if (vals.empty()){throw std::invalid_argument("Unable to read one number from this line:"+lines[i]); }
-        return strtod(vals[0].c_str(), nullptr);
-    };
+    parser.set_i(i);
+    
+    // These lambdas are just for concision in the next block
+    auto readnline = [&](const string& line, int n){ return parser.read_Nnum_from_line(line, n); };
+    auto readallline = [&](const string& line){ return parser.read_allnum_from_line(line); };
+    auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
+    auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
+    auto read1str = [&](){ return parser.read_1str_and_increment(); };
     
     // Read in all the metadata parameters
     res.Tmin_K = read1();
@@ -213,11 +259,11 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
     double l = 2.0; // exponent on delta in exponential term
 
     // And now we read the EOS coefficients in
-    auto termcounts = readn(-1); // Should always be 32, 1
+    auto termcounts = readn(2); // Should always be 32, 1
     // Collect all the coefficients
     std::vector<double> cc = {0.0}; // We are going to 1-index for simplicity in what follows
-    for (auto j = i; j < lines.size(); ++j){
-        for (auto& val : readnline(lines[j], -1)){
+    for (auto j = parser.get_i(); j < lines.size(); ++j){
+        for (auto& val : readallline(lines[j])){
             cc.push_back(val*100); // Pressures in the MBWR formulation in REFPROP are in bar, so convert to kPa
         }
     }
@@ -295,14 +341,16 @@ JSON representation
 */
 ResidualResult convert_FEQ(const vector<string>& lines){
     ResidualResult res;
+    LineParser parser(lines);
     
-    auto read1strline = [](const string &line){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(line), " ");
-        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+line); }
-        return vals[0];
-    };
-    auto model_key = read1strline(lines[1]);
+    // These lambdas are just for concision in the next block
+    auto readnline = [&](const string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
+    auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
+    auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
+    auto read1str = [&](){ return parser.read_1str_and_increment(); };
+    
+    auto model_key = parser.read_1str_from_line(lines[1]);
+    
     if (model_key == "BWR"){
         return BWR2FEQ(lines);
     }
@@ -330,44 +378,8 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         } 
         i = j; break;
     }
-    auto readnline = [](const string& line, int n){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(line), " ");
-        std::vector<double> o;
-        for (auto v : vals){
-            if (!v.empty()){
-                std::string v_e = std::regex_replace(v, std::regex("[Dd]"), "e");
-                std::string v_ew = std::regex_replace(v_e, std::regex("\\s+"), "");
-                if (v_ew.empty()){
-                    continue;
-                }
-                o.push_back(strtod(v_ew.c_str(), nullptr));
-            }
-        }
-        if (n > 0){
-            if (o.size() != n){ throw std::invalid_argument("Unable to read "+std::to_string(n)+" numbers from this line:"+line); }
-        }
-        return o;
-    };
-    auto readn = [&lines, &i, &readnline](int n){
-        auto vals = readnline(lines[i], n);
-        i++;
-        return vals;
-    };
-    auto read1str = [&lines, &i](){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(lines[i]), " ");
-        i++;
-        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+lines[i]); }
-        return vals[0];
-    };
-    auto read1 = [&lines, &i](){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(lines[i]), " ");
-        i++;
-        if (vals.empty()){throw std::invalid_argument("Unable to read one number from this line:"+lines[i]); }
-        return strtod(vals[0].c_str(), nullptr);
-    };
+    parser.set_i(i);
+    
     // Read in all the metadata parameters
     res.Tmin_K = read1();
     res.Tmax_K = read1();
@@ -589,13 +601,15 @@ struct Alpha0Result{
 Alpha0Result convert_CP0(const vector<string>& lines, double Tri){
     Alpha0Result a;
     
-    auto read1strline = [](const string &line){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(line), " ");
-        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+line); }
-        return vals[0];
-    };
-    a.cp0_pointer = read1strline(lines[1]);
+    LineParser parser(lines);
+    
+    // These lambdas are just for concision in the next block
+    auto readnline = [&](const string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
+    auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
+    auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
+    auto read1str = [&](){ return parser.read_1str_and_increment(); };
+    
+    a.cp0_pointer = parser.read_1str_from_line(lines[1]);
     
     // Find the first non-header row;
     size_t i = std::string::npos;
@@ -607,44 +621,7 @@ Alpha0Result convert_CP0(const vector<string>& lines, double Tri){
         }
         i = j; break;
     }
-    auto readnline = [](const string& line, int n){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(line), " ");
-        std::vector<double> o;
-        for (auto v : vals){
-            if (!v.empty()){
-                std::string v_e = std::regex_replace(v, std::regex("[Dd]"), "e");
-                std::string v_ew = std::regex_replace(v_e, std::regex("\\s+"), "");
-                if (v_ew.empty()){
-                    continue;
-                }
-                o.push_back(strtod(v_ew.c_str(), nullptr));
-            }
-        }
-        if (n > 0){
-            if (o.size() != n){ throw std::invalid_argument("Unable to read "+std::to_string(n)+" numbers from this line:"+line); }
-        }
-        return o;
-    };
-    auto readn = [&lines, &i, &readnline](int n){
-        auto vals = readnline(lines[i], n);
-        i++;
-        return vals;
-    };
-    auto read1str = [&lines, &i](){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(lines[i]), " ");
-        i++;
-        if (vals.empty()){throw std::invalid_argument("Unable to read one string from this line:"+lines[i]); }
-        return vals[0];
-    };
-    auto read1 = [&lines, &i](){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(lines[i]), " ");
-        i++;
-        if (vals.empty()){throw std::invalid_argument("Unable to read one number from this line:"+lines[i]); }
-        return strtod(vals[0].c_str(), nullptr);
-    };
+    parser.set_i(i);
     
     // Read in all the metadata parameters
     a.Tmin_K = read1();
@@ -684,6 +661,7 @@ Alpha0Result convert_CP0(const vector<string>& lines, double Tri){
     // The log(rho) term that is always included
     a.alpha0.push_back({{"a1", 0.0}, {"a2", 0.0}, {"type", "IdealGasHelmholtzLead"}});
     a.alpha0.push_back({{"a", -1}, {"type", "IdealGasHelmholtzLogTau"}});
+    i = parser.get_i();
     if (Npoly > 0){
         auto l = std::vector<std::string>(lines.begin()+i, lines.begin()+i+Npoly);
         a.alpha0.push_back(read_polynomial(l));
@@ -849,6 +827,14 @@ auto get_ancillary_description(const string& key){
 
 nlohmann::json get_ancillary(const vector<string>& lines){
     
+    LineParser parser(lines);
+    
+    // These lambdas are just for concision in the next block
+    auto readnline = [&](const string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
+    auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
+    auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
+    auto read1str = [&](){ return parser.read_1str_and_increment(); };
+    
     auto modelname = lines[1].substr(0, 3);
     
     // Find the first non-header row;
@@ -861,25 +847,7 @@ nlohmann::json get_ancillary(const vector<string>& lines){
         }
         i = j; break;
     }
-    
-    auto readnline = [](const string line, int n){
-        using namespace internal;
-        auto vals = strsplit(strip_line_comment(line), " ");
-        std::vector<double> o;
-        for (auto v : vals){
-            if (!v.empty()){
-                o.push_back(strtod(v.c_str(), nullptr));
-            }
-        }
-        if (o.size() != n){ throw std::invalid_argument("Unable to read "+std::to_string(n)+" numbers from this line:"+line);  }
-        return o;
-    };
-    auto readn = [&lines, &i, &readnline](int n){
-        auto vals = readnline(lines[i], n);
-        i++;
-        return vals;
-    };
-    auto read1 = [&lines, &i, &readn](){ return readn(1)[0]; };
+    parser.set_i(i);
     
     double Tmin_K = read1();
     double Tmax = read1();
