@@ -106,11 +106,11 @@ public:
     LineParser(const std::vector<std::string>& lines) : lines(lines){}
     
     /// Get a reference to the next line to be parsed
-    const auto& get_next_line(){ return lines[i]; }
+    const auto& get_next_line() const { return lines[i]; }
     /// Set the index of the next line
     void set_i(std::size_t i){ this->i = i; }
     /// Get the index of the next line
-    auto get_i(){ return i; }
+    std::size_t get_i() const { return i; }
     
     auto read_allnum_from_line(const std::string& line) const{
         using namespace internal;
