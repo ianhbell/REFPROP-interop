@@ -50,13 +50,13 @@ namespace internal{
         }
     }
     std::string strip_trailing_whitespace(const std::string& line){
-        auto ipos = line.find_first_of(" \t\n\v\f\r");
+        auto ipos = line.find_last_not_of(" \t\n\v\f\r");
         if (ipos == std::string::npos){
             // No whitespace found, return whole string
             return line;
         }
         else{
-            return line.substr(0, ipos);
+            return line.substr(0, ipos+1);
         }
     }
 
