@@ -83,6 +83,9 @@ namespace internal{
                 iend = i; break;
             }
         }
+        if (iend == std::string::npos){
+            throw std::invalid_argument("Could not find an empty line at end of block");
+        }
         return std::vector<std::string>(lines.begin()+istart, lines.begin()+iend);
     }
 
