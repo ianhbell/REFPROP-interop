@@ -85,8 +85,7 @@ namespace internal{
         return std::vector<std::string>(lines.begin()+istart, lines.begin()+iend);
     }
 
-    std::string to_upper(const std::string& str){
-        auto s = str; // copy :(
+    std::string to_upper(const std::string s){
         std::locale locale;
         auto f = [&locale] (char ch) { return std::use_facet<std::ctype<char>>(locale).toupper(ch); };
         std::transform(s.begin(), s.end(), s.begin(), f);
