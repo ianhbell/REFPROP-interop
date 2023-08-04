@@ -19,24 +19,24 @@ namespace internal{
                pos_end = std::string::npos,
                delim_len = delimiter.length();
         std::string token;
-        std::vector<std::string> res;
+        std::vector<std::string> result;
         
         while ((pos_end = s.find (delimiter, pos_start)) != std::string::npos) {
             token = s.substr (pos_start, pos_end - pos_start);
             pos_start = pos_end + delim_len;
-            res.push_back (token);
+            result.push_back (token);
         }
         
-        res.push_back (s.substr (pos_start));
-        return res;
+        result.push_back (s.substr (pos_start));
+        return result;
     }
     std::string strjoin(const std::vector<std::string> &lines, const std::string& delim){
         if (lines.empty()){ return ""; }
-        std::string o = lines[0];
+        std::string result = lines[0];
         for (auto i = 1; i < lines.size(); ++i){
-            o += delim + lines[i];
+            result += delim + lines[i];
         }
-        return o;
+        return result;
     }
 
     std::string strip_line_comment(const std::string& line){
