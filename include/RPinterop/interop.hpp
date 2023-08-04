@@ -138,7 +138,7 @@ public:
         }
         return o;
     }
-    // Read in a fixed number of numbers (floats or integers) from the line
+    /// Read in a fixed number of numbers (floats or integers) from the line
     auto read_Nnum_from_line(const std::string& line, std::size_t n) const{
         auto vals = read_allnum_from_line(line);
         if (n > 0){
