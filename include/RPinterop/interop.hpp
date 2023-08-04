@@ -103,7 +103,7 @@ private:
     const std::vector<std::string>& lines_;
     std::size_t i;
 public:
-    LineParser(const std::vector<std::string>& lines) : lines_(lines): i(0){}
+    LineParser(const std::vector<std::string>& lines) : lines_(lines), i(0){}
     
     /// Get a reference to the next line to be parsed
     const auto& get_next_line() const {
