@@ -100,13 +100,16 @@ namespace internal{
  */
 class LineParser{
 private:
-    const std::vector<std::string>& lines;
+    const std::vector<std::string>& lines_;
     std::size_t i;
 public:
-    LineParser(const std::vector<std::string>& lines) : lines(lines): i(0){}
+    LineParser(const std::vector<std::string>& lines) : lines_(lines): i(0){}
     
     /// Get a reference to the next line to be parsed
-    const auto& get_next_line() const { return lines[i]; }
+    const auto& get_next_line() const {
+        if (i > lines_.size()-1){ throw std::invalid_argument("no next line to return"); }
+        return lines_[i];
+    }
     /// Set the index of the next line
     void set_i(std::size_t i){ this->i = i; }
     /// Get the index of the next line
