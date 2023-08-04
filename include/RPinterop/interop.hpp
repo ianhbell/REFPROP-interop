@@ -32,13 +32,11 @@ namespace internal{
     }
     std::string strjoin(const std::vector<std::string> &lines, const std::string& delim){
         if (lines.empty()){ return ""; }
-        else{
-            std::string o = lines[0];
-            for (auto i = 1; i < lines.size(); ++i){
-                o += delim + lines[i];
-            }
-            return o;
+        std::string o = lines[0];
+        for (auto i = 1; i < lines.size(); ++i){
+            o += delim + lines[i];
         }
+        return o;
     }
 
     std::string strip_line_comment(const std::string& line){
