@@ -15,7 +15,9 @@ namespace internal{
 
     // for string delimiter (https://stackoverflow.com/a/46931770)
     std::vector<std::string> strsplit (const std::string& s, const std::string& delimiter) {
-        size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+        std::size_t pos_start = 0,
+               pos_end = std::string::npos,
+               delim_len = delimiter.length();
         std::string token;
         std::vector<std::string> res;
         
