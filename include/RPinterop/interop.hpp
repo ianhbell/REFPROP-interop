@@ -10,21 +10,16 @@
 
 #include "nlohmann/json.hpp"
 
-//using namespace std;
-using std::vector;
-using std::string;
-
 namespace RPinterop{
-
-    namespace internal{
+namespace internal{
 
     // for string delimiter (https://stackoverflow.com/a/46931770)
-    vector<string> strsplit (string s, string delimiter) {
+    std::vector<std::string> strsplit (const std::string& s, const std::string& delimiter) {
         size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-        string token;
-        vector<string> res;
+        std::string token;
+        std::vector<std::string> res;
         
-        while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
+        while ((pos_end = s.find (delimiter, pos_start)) != std::string::npos) {
             token = s.substr (pos_start, pos_end - pos_start);
             pos_start = pos_end + delim_len;
             res.push_back (token);
@@ -33,7 +28,7 @@ namespace RPinterop{
         res.push_back (s.substr (pos_start));
         return res;
     }
-    string strjoin(const vector<string> &lines, const std::string& delim){
+    std::string strjoin(const std::vector<std::string> &lines, const std::string& delim){
         if (lines.empty()){ return ""; }
         else{
             std::string o = lines[0];
@@ -44,7 +39,7 @@ namespace RPinterop{
         }
     }
 
-    string strip_line_comment(const string& line){
+    std::string strip_line_comment(const std::string& line){
         auto ipos = line.find_first_of("!");
         if (ipos == std::string::npos){
             // No comment found, return whole string
@@ -54,7 +49,7 @@ namespace RPinterop{
             return line.substr(0, ipos);
         }
     }
-    string strip_trailing_whitespace(const string& line){
+    std::string strip_trailing_whitespace(const std::string& line){
         auto ipos = line.find_first_of(" \t\n\v\f\r");
         if (ipos == std::string::npos){
             // No whitespace found, return whole string
@@ -67,7 +62,7 @@ namespace RPinterop{
 
     std::vector<std::string> get_line_chunk(
                                             const std::vector<std::string>& lines,
-                                            const string& starting_key
+                                            const std::string& starting_key
                                             )
     {
         // block starts with the key
@@ -90,7 +85,7 @@ namespace RPinterop{
         return std::vector<std::string>(lines.begin()+istart, lines.begin()+iend);
     }
 
-    string to_upper(const string& str){
+    std::string to_upper(const std::string& str){
         auto s = str; // copy :(
         std::locale locale;
         auto f = [&locale] (char ch) { return std::use_facet<std::ctype<char>>(locale).toupper(ch); };
@@ -146,13 +141,13 @@ public:
         return vals;
     }
     /// Read in the strings from the line, assuming (possibly multiple) " " as the string delimiter
-    auto read_strs_from_line(const string &line) const {
+    auto read_strs_from_line(const std::string &line) const {
         using namespace internal;
         auto vals = strsplit(strip_line_comment(line), " ");
         return vals;
     }
     /// Read in one string from the line
-    auto read_1str_from_line(const string &line) const {
+    auto read_1str_from_line(const std::string &line) const {
         using namespace internal;
         auto vals = strsplit(strip_line_comment(line), " ");
         if (vals.empty()){ throw std::invalid_argument("Unable to read at least one string from this line:"+line); }
@@ -222,8 +217,8 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
     parser.set_i(i);
     
     // These lambdas are just for concision in the next block
-    auto readnline = [&](const string& line, int n){ return parser.read_Nnum_from_line(line, n); };
-    auto readallline = [&](const string& line){ return parser.read_allnum_from_line(line); };
+    auto readnline = [&](const std::string& line, int n){ return parser.read_Nnum_from_line(line, n); };
+    auto readallline = [&](const std::string& line){ return parser.read_allnum_from_line(line); };
     auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
     auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
     auto read1str = [&](){ return parser.read_1str_and_increment(); };
@@ -339,12 +334,12 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
 Given a string that contains an EOS block, return its
 JSON representation
 */
-ResidualResult convert_FEQ(const vector<string>& lines){
+ResidualResult convert_FEQ(const std::vector<std::string>& lines){
     ResidualResult res;
     LineParser parser(lines);
     
     // These lambdas are just for concision in the next block
-    auto readnline = [&](const string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
+    auto readnline = [&](const std::string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
     auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
     auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
     auto read1str = [&](){ return parser.read_1str_and_increment(); };
@@ -410,7 +405,7 @@ ResidualResult convert_FEQ(const vector<string>& lines){
     std::size_t NGaussiancount = termcounts[3]; // Parameters per term
     std::size_t NGao = termcounts[4];
 
-    auto read_normal = [&readnline](const vector<string> &lines, size_t Nnormalcount) -> nlohmann::json {
+    auto read_normal = [&readnline](const std::vector<std::string> &lines, std::size_t Nnormalcount) -> nlohmann::json {
         std::vector<double> n, t, d, l, g;
         for (auto line : lines){
             auto z = readnline(line, Nnormalcount);
@@ -439,7 +434,7 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         }
     };
 
-    auto read_Gaussian = [&readnline](const vector<string> &lines, size_t NGaussiancount) -> nlohmann::json {
+    auto read_Gaussian = [&readnline](const std::vector<std::string> &lines, size_t NGaussiancount) -> nlohmann::json {
         // These terms can be of a number of different kinds
         // and they are disambiguated based upon the parameters in the term
         // (this is not documented anywhere in REFPROP)
@@ -550,7 +545,7 @@ ResidualResult convert_FEQ(const vector<string>& lines){
         if(!doubleexp.empty()){ o.push_back(doubleexp); }
         return o;
     };
-    auto read_Gao = [&readnline](const vector<string> &lines, size_t NGaocount) -> nlohmann::json{
+    auto read_Gao = [&readnline](const std::vector<std::string> &lines, size_t NGaocount) -> nlohmann::json{
         std::vector<double> n,t,d,eta,beta,gamma,epsilon,b;
         for (auto& line : lines){
             auto z = readnline(line, NGaocount);
@@ -598,13 +593,13 @@ struct Alpha0Result{
     nlohmann::json alpha0;
 };
 
-Alpha0Result convert_CP0(const vector<string>& lines, double Tri){
+Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tri){
     Alpha0Result a;
     
     LineParser parser(lines);
     
     // These lambdas are just for concision in the next block
-    auto readnline = [&](const string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
+    auto readnline = [&](const std::string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
     auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
     auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
     auto read1str = [&](){ return parser.read_1str_and_increment(); };
@@ -637,7 +632,7 @@ Alpha0Result convert_CP0(const vector<string>& lines, double Tri){
     auto NPlanck = N[1];
 
     // cp0/R = c_i*T^t_i
-    auto read_polynomial = [&readnline, &a, &Tri](const vector<string> &lines) -> nlohmann::json {
+    auto read_polynomial = [&readnline, &a, &Tri](const std::vector<std::string> &lines) -> nlohmann::json {
         std::vector<double> c, t;
         for (auto line : lines){
             auto z = readnline(line, 2);
@@ -647,7 +642,7 @@ Alpha0Result convert_CP0(const vector<string>& lines, double Tri){
         return {{"type", "IdealGasHelmholtzCP0PolyT"}, {"c", c}, {"t", t}, {"T0", 298.15}, {"Tc", Tri}, {"R", a.cp0red_JmolK}};
     };
     
-    auto read_Planck = [&readnline, &a, &Tri](const vector<string> &lines) -> nlohmann::json {
+    auto read_Planck = [&readnline, &a, &Tri](const std::vector<std::string> &lines) -> nlohmann::json {
         std::vector<double> n, v;
         for (auto line : lines){
             auto z = readnline(line, 2);
@@ -737,7 +732,7 @@ struct HeaderResult{
     }
 };
 
-HeaderResult convert_header(const vector<string>& lines){
+HeaderResult convert_header(const std::vector<std::string>& lines){
     HeaderResult h;
     std::size_t i = 0;
     auto _read1str = [](const std::string &line){
@@ -747,7 +742,7 @@ HeaderResult convert_header(const vector<string>& lines){
         return vals[0];
     };
     auto read1str = [&lines, &i, &_read1str](){
-        string val = _read1str(lines[i]); i++; return val;
+        std::string val = _read1str(lines[i]); i++; return val;
     };
     auto _read1 = [](const std::string &line){
         using namespace internal;
@@ -799,7 +794,7 @@ HeaderResult convert_header(const vector<string>& lines){
     return h;
 }
 
-auto get_ancillary_description(const string& key){
+auto get_ancillary_description(const std::string& key){
     const std::map<std::string, std::string> keys = {
         // Most are in this form:
         {"PS5",  "P=Pc*EXP[SUM(Ni*Theta^ti)*Tc/T]"},
@@ -825,12 +820,12 @@ auto get_ancillary_description(const string& key){
     }
 };
 
-nlohmann::json get_ancillary(const vector<string>& lines){
+nlohmann::json get_ancillary(const std::vector<std::string>& lines){
     
     LineParser parser(lines);
     
     // These lambdas are just for concision in the next block
-    auto readnline = [&](const string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
+    auto readnline = [&](const std::string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
     auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
     auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
     auto read1str = [&](){ return parser.read_1str_and_increment(); };
@@ -915,7 +910,7 @@ nlohmann::json get_ancillary(const vector<string>& lines){
     };
 }
 
-nlohmann::json get_all_ancillaries(const vector<string>& lines){
+nlohmann::json get_all_ancillaries(const std::vector<std::string>& lines){
     return {
         {"pS", get_ancillary(internal::get_line_chunk(lines, "#PS"))},
         {"rhoV", get_ancillary(internal::get_line_chunk(lines, "#DV"))},
@@ -1088,7 +1083,7 @@ public:
         };
     }
 
-    auto make_json(const string& name){
+    auto make_json(const std::string& name){
         auto head = convert_header(lines);
         auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
         auto alpha0 = convert_CP0(internal::get_line_chunk(lines, "#AUX"), feq.Tred_K);
