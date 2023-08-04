@@ -60,6 +60,7 @@ namespace internal{
         }
     }
 
+    /// Return a chunk of lines starting from a line that begins with starting_key and ends before the first empty line
     std::vector<std::string> get_line_chunk(
                                             const std::vector<std::string>& lines,
                                             const std::string& starting_key
