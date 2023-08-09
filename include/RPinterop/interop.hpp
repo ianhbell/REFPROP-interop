@@ -280,21 +280,14 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
 //        std::cout << n << "    " << t << "    " << d << "    " << l << "    " << g << "    " << std::endl;
     };
     
+    // Powers of gamma^k, to be used in the denominators of exponential terms
+    double g1 = g, g2 = g1*g, g3 = g2*g, g4 = g3*g, g5 = g4*g, g6 = g5*g;
+    
     std::vector<double> t2 = {0,1,0.5,0,-1,-2,1,0,-1,-2,1,0,-1,0,-1,-2,-1,-1,-2,-2}; // exponents on T in normal part
     std::vector<double> d2 = {0,2,2,2,2,2,3,3,3,3,4,4,4,5,6,6,7,8,8,9}; // exponents on density in normal part
     std::vector<double> s = {-2,-3,-2,-4,-2,-3,-2,-4,-2,-3,-2,-3,-4}; // exponents on T in exponential part
     std::vector<double> r = {3,3,5,5,7,7,9,9,11,11,13,13,13}; // exponents on density in exponential part
 
-    // For polynomial term, see page 26 of Span monograph, straightforward conversion to alphar contribution
-    // Converting from Eq. 3.28 to 3.26 in the Span formulation, but with an additional factor of d2[i]-1 in the denominator
-    // to match Younglove and McLinden, Eq. B6. This is also what is done in REFPROP
-    for (int i =1; i < 20; ++i){
-        addterm(cc[i]*pow(res.rhored_molL, d2[i]-1)*pow(res.Tred_K, t2[i]-1)/res.R/(d2[i]-1), 1-t2[i], d2[i]-1, 0, 0);
-    }
-    
-    // Powers of gamma^k, to be used in the denominators of exponential terms
-    double g1 = g, g2 = g1*g, g3 = g2*g, g4 = g3*g, g5 = g4*g, g6 = g5*g;
-    
     // For exponential part of Z-1...
     // See Table 3.5 from Span book. But first convert leading coefficients to the form of Eq 3.26,
     // but here *without* the mysterious term in the denominator
@@ -305,7 +298,14 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
     addterm(n[20]/(2*g1) + n[22]/(2*g2) + n[24]/g3 + 3*n[26]/g4 + 12*n[28]/g5 + 60*n[30]/g6, 3, 0, 0, 0);
     addterm(n[21]/(2*g1) + n[25]/g3 + 12*n[29]/g5 + 60*n[31]/g6, 4, 0, 0, 0);
     addterm(n[23]/(2*g2) + 3*n[27]/g4 + 60*n[32]/g6, 5, 0, 0, 0);
-
+    
+    // For polynomial term, see page 26 of Span monograph, straightforward conversion to alphar contribution
+    // Converting from Eq. 3.28 to 3.26 in the Span formulation, but with an additional factor of d2[i]-1 in the denominator
+    // to match Younglove and McLinden, Eq. B6. This is also what is done in REFPROP
+    for (int i =1; i < 20; ++i){
+        addterm(cc[i]*pow(res.rhored_molL, d2[i]-1)*pow(res.Tred_K, t2[i]-1)/res.R/(d2[i]-1), 1-t2[i], d2[i]-1, 0, 0);
+    }
+    
     addterm(-(n[20]/(2*g1) + n[22]/(2*g2) + n[24]/g3 + 3*n[26]/g4 + 12*n[28]/g5 + 60*n[30]/g6), 3, 0, l, g);
     addterm(-(n[21]/(2*g1) + n[25]/g3 + 12*n[29]/g5 + 60*n[31]/g6), 4, 0, l, g);
     addterm(-(n[23]/(2*g2) + 3*n[27]/g4 + 60*n[32]/g6), 5, 0, l, g);
