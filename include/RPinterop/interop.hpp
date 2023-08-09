@@ -636,6 +636,11 @@ Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tri){
     auto N = readn(7);
     auto Npoly = N[0];
     auto NPlanck = N[1];
+    for (auto i = 2; i < N.size(); ++i){
+        if (N[i] != 0){
+            throw std::invalid_argument("Found a cp0 term that cannot currently be parsed");
+        }
+    }
 
     // cp0/R = c_i*T^t_i
     auto read_polynomial = [&readnline, &a, &Tri](const std::vector<std::string> &lines) -> nlohmann::json {
