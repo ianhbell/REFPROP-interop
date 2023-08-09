@@ -404,17 +404,17 @@ ResidualResult convert_FEQ(const std::vector<std::string>& lines){
     res.DOI_EOS = DOI_EOS;
 
     // And now we read the EOS
-    auto termcounts = readn(-1);
+    auto termcounts = readn(12);
     std::size_t Nnormal = termcounts[0];
     std::size_t Nnormalcount = termcounts[1]; // Parameters per term
     std::size_t NGaussian = termcounts[2];
     std::size_t NGaussiancount = termcounts[3]; // Parameters per term
     std::size_t NGao = termcounts[4];
 
-    auto read_normal = [&readnline](const std::vector<std::string> &lines, std::size_t Nnormalcount) -> nlohmann::json {
+    auto read_normal = [&readn](const std::vector<std::string> &lines, std::size_t Nnormalcount) -> nlohmann::json {
         std::vector<double> n, t, d, l, g;
         for (auto line : lines){
-            auto z = readnline(line, Nnormalcount);
+            auto z = readn(Nnormalcount);
             n.push_back(z[0]);
             t.push_back(z[1]);
             d.push_back(z[2]);
@@ -440,7 +440,7 @@ ResidualResult convert_FEQ(const std::vector<std::string>& lines){
         }
     };
 
-    auto read_Gaussian = [&readnline](const std::vector<std::string> &lines, size_t NGaussiancount) -> nlohmann::json {
+    auto read_Gaussian = [&readn](const std::vector<std::string> &lines, size_t NGaussiancount) -> nlohmann::json {
         // These terms can be of a number of different kinds
         // and they are disambiguated based upon the parameters in the term
         // (this is not documented anywhere in REFPROP)
@@ -479,7 +479,7 @@ ResidualResult convert_FEQ(const std::vector<std::string>& lines){
         };
         
         for (auto& line : lines){
-            auto z = readnline(line, NGaussiancount);
+            auto z = readn(NGaussiancount);
             assert(NGaussiancount == 12);
             // Determine what kind of term it is and store accordingly
             if (z[3] == 2 && z[4] == 2 && z[9] == 0 && z[10] == 0 && z[11] == 0){
@@ -551,10 +551,10 @@ ResidualResult convert_FEQ(const std::vector<std::string>& lines){
         if(!doubleexp.empty()){ o.push_back(doubleexp); }
         return o;
     };
-    auto read_Gao = [&readnline](const std::vector<std::string> &lines, size_t NGaocount) -> nlohmann::json{
+    auto read_Gao = [&readn](const std::vector<std::string> &lines, size_t NGaocount) -> nlohmann::json{
         std::vector<double> n,t,d,eta,beta,gamma,epsilon,b;
         for (auto& line : lines){
-            auto z = readnline(line, NGaocount);
+            auto z = readn(NGaocount);
             assert(NGaocount == 12);
             n.push_back(z[0]);
             t.push_back(z[1]);
