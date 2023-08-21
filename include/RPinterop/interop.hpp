@@ -194,8 +194,8 @@ public:
 struct ResidualResult{
     double Tmin_K,Tmax_K,pmax_kPa,rhomax_molL;
     std::string cp0_pointer;
-    double MM_kgkmol,Ttriple_K,ptriple_kPa,rhotriple_molL,Tnbp_K,acentric,
-    Tcrit_K,pcrit_kPa,rhocrit_molL,Tred_K,rhored_molL,R;
+    double MM_kgkmol = -1,Ttriple_K,ptriple_kPa,rhotriple_molL,Tnbp_K,acentric,
+    Tcrit_K,pcrit_kPa,rhocrit_molL,Tred_K,rhored_molL,R=-1;
     nlohmann::json alphar;
     std::string DOI_EOS = "";
 };
@@ -786,7 +786,7 @@ Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tri){
  */
 struct HeaderResult{
     std::string short_name, CASnum, full_name, chemical_formula, synonym;
-    double MM_kgkmol, Ttriple_K, Tnbp_K, Tcrit_K, pcrit_kPa, rhocrit_molL, acentric, dipole_D;
+    double MM_kgkmol = -1, Ttriple_K, Tnbp_K, Tcrit_K, pcrit_kPa, rhocrit_molL, acentric, dipole_D;
     std::string refstate, RPversion;
     std::string UNnumber = "?";
     std::string family = "?";
@@ -1060,7 +1060,7 @@ public:
     auto get_warnings(){ return warnings; }
     auto get_errors(){ return errors; }
 
-    nlohmann::json convert_EOS(const RPinterop::ResidualResult& feq, const RPinterop::Alpha0Result& alpha0){
+    nlohmann::json convert_EOS(const RPinterop::ResidualResult& feq, const RPinterop::Alpha0Result& alpha0, const HeaderResult& head){
 
         nlohmann::json STATES = {
             {"reducing", {
@@ -1121,6 +1121,12 @@ public:
           {"p_max_units", "Pa"},
           {"pseudo_pure", false} /// TODO
         };
+        if (feq.MM_kgkmol < 0){
+            EOS["molar_mass"] = head.MM_kgkmol/1e3;
+        }
+        if (feq.R < 0){
+            EOS["gas_constant"] = 8.31446261815324;
+        }
         return EOS;
     }
 
@@ -1210,7 +1216,7 @@ public:
         }
         
         auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
-        auto EOS = convert_EOS(feq.value(), alpha0);
+        auto EOS = convert_EOS(feq.value(), alpha0, head);
 
         nlohmann::json f = {
             {"EOS", {EOS}},
