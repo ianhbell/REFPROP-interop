@@ -178,6 +178,12 @@ public:
         i++;
         return val;
     }
+    /// Read in one number from the next line and increment the counter
+    auto read_1num_and_increment(){
+        auto vals = read_Nnum_from_line(get_next_line(), 1);
+        i++;
+        return vals[0];
+    };
     
 };
 
