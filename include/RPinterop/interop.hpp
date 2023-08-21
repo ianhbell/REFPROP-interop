@@ -342,6 +342,97 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
     return res;
 }
 
+std::optional<ResidualResult> parse_ECS(const std::vector<std::string>& lines){
+    ResidualResult res;
+    LineParser parser(lines);
+    
+    auto model_key = parser.read_1str_from_line(lines[1]);
+    
+    // Find the DOI if present
+    std::string DOI_EOS = "??";
+    
+    // Find the first non-header row;
+    size_t i = std::string::npos;
+    for (auto j = 2; j < lines.size(); ++j){
+        // First line not started by element in {:,?,!}, stop
+        auto ind = lines[j].find_first_of(":?!");
+        
+        auto indEOS = lines[j].find(":DOI: ");
+        if(!lines[j].empty() && (indEOS == 0)){
+            std::string init = lines[j].substr(indEOS+6, lines[j].size()-6);
+            DOI_EOS = internal::strip_trailing_whitespace(init);
+        }
+                                              
+        if(!lines[j].empty() && (ind == 0)){
+            continue;
+        }
+        i = j; break;
+    }
+    parser.set_i(i);
+    
+    res.Tmin_K = parser.read_1num_and_increment();
+    res.Tmax_K = parser.read_1num_and_increment();
+    res.pmax_kPa = parser.read_1num_and_increment();
+    res.rhomax_molL = parser.read_1num_and_increment();
+    res.cp0_pointer = parser.read_1str_and_increment();
+    std::string reference_fluid = internal::strip_trailing_whitespace(parser.read_1str_and_increment());
+    std::string ref_model_pointer = parser.read_1str_and_increment();
+    double acentric_reference = parser.read_1num_and_increment();
+    double Z_crit_reference = parser.read_1num_and_increment();
+    double acentric_fluid = parser.read_1num_and_increment();
+    double T_crit_fluid_K = parser.read_1num_and_increment();
+    double p_crit_fluid_kPa = parser.read_1num_and_increment();
+    double rho_crit_fluid_molL = parser.read_1num_and_increment();
+    
+    auto read_coeffs_exps = [&](int N){
+        std::vector<double> coeffs, exps;
+        for (auto i = 0; i < N; ++i){
+            auto coefexp = parser.read_Nnum_and_increment(2);
+            coeffs.push_back(coefexp[0]);
+            exps.push_back(coefexp[1]);
+        }
+        return std::make_tuple(coeffs, exps);
+    };
+    int NTF = parser.read_1num_and_increment();
+    auto [fT_coeffs, fT_exps] = read_coeffs_exps(NTF);
+    int NDF = parser.read_1num_and_increment();
+    auto [fD_coeffs, fD_exps] = read_coeffs_exps(NDF);
+    int NTH = parser.read_1num_and_increment();
+    auto [hT_coeffs, hT_exps] = read_coeffs_exps(NTH);
+    int NDH = parser.read_1num_and_increment();
+    auto [hD_coeffs, hD_exps] = read_coeffs_exps(NDH);
+    
+    if (fT_coeffs.size() == 2 && fD_coeffs.empty() && hT_coeffs.size() == 2 && hD_coeffs.empty()){
+        nlohmann::json jref = {
+            {"name", reference_fluid},
+            {"acentric", acentric_reference},
+            {"Z_crit", Z_crit_reference}
+        };
+        nlohmann::json jfluid = {
+            {"acentric", acentric_fluid},
+            {"f_T_coeffs", fT_coeffs},
+            {"h_T_coeffs", hT_coeffs},
+            {"rhomolar_crit / mol/m^3", rho_crit_fluid_molL*1000},
+            {"T_crit / K", T_crit_fluid_K},
+            {"Z_crit", p_crit_fluid_kPa*1000/(8.31446261815324*T_crit_fluid_K*rho_crit_fluid_molL*1000)}
+        };
+        
+        nlohmann::json j = {
+            {"kind", "multifluid-ECS-HuberEly1994"},
+            {"model", {
+                {"reference_fluid", jref},
+                {"fluid", jfluid}
+            }}
+        };
+        std::cout << j.dump(1) << std::endl;
+        res.alphar = j;
+    }
+    else{
+        throw std::invalid_argument("I don't know yet how to parse this kind of ECS term");
+    }
+    return res;
+}
+
 /**
 Given a string that contains an EOS block, return its
 JSON representation
@@ -360,6 +451,9 @@ std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>& lines)
     
     if (model_key == "BWR"){
         return BWR2FEQ(lines);
+    }
+    else if (model_key == "ECS"){
+        return parse_ECS(lines);
     }
     else if (model_key != "FEQ"){
         throw std::invalid_argument("Cannot parse this EOS type:" + model_key);
