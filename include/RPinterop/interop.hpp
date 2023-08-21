@@ -346,7 +346,7 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
 Given a string that contains an EOS block, return its
 JSON representation
 */
-ResidualResult convert_FEQ(const std::vector<std::string>& lines){
+std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>& lines){
     ResidualResult res;
     LineParser parser(lines);
     
@@ -1104,9 +1104,7 @@ public:
 
     auto make_json(const std::string& name){
         auto head = convert_header(lines);
-        auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
-        auto alpha0 = convert_CP0(internal::get_line_chunk(lines, "#AUX"), feq.Tred_K);
-        auto EOS = convert_EOS(feq, alpha0);
+        auto alpha0 = convert_CP0(internal::get_line_chunk(lines, "#AUX"), head.Tcrit_K);
         
         nlohmann::json ancillaries = nlohmann::json::object();
         try{
@@ -1116,6 +1114,9 @@ public:
             warnings.push_back(std::string("Could not load ancillaries; message:") + e.what());
 //            std::cerr << e.what() << std::endl;
         }
+        
+        auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
+        auto EOS = convert_EOS(feq.value(), alpha0);
 
         nlohmann::json f = {
             {"EOS", {EOS}},
