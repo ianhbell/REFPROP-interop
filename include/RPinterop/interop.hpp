@@ -1535,7 +1535,6 @@ public:
     auto make_jsons(const std::string& name){
         auto BIP = convert_BNC();
         auto deps = convert_MXM();
-        std::cout << BIP.dump(2) << std::endl;
         return std::make_tuple(deps, BIP);
     }
 };
