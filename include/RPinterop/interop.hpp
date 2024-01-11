@@ -39,6 +39,9 @@ namespace internal{
         return result;
     }
 
+    /**
+    For a line with "!", return all characters before (non-inclusive) the "!", otherwise return the whole string
+     */
     std::string strip_line_comment(const std::string& line){
         auto ipos = line.find_first_of("!");
         if (ipos == std::string::npos){
@@ -46,9 +49,25 @@ namespace internal{
             return line;
         }
         else{
+            // Return the characters preceding the comment character of "!"
             return line.substr(0, ipos);
         }
     }
+    /**
+    For a line with a character, return all characters after the character, otherwise return the whole string
+     */
+    std::string strip_line_leading_comment(const std::string& line, const std::string& comment_char = "!"){
+        auto ipos = line.find_first_of(comment_char);
+        if (ipos == std::string::npos){
+            // No comment found, return whole string
+            return line;
+        }
+        else{
+            // Return the characters after the comment character of "!"
+            return line.substr(ipos+1);
+        }
+    }
+
     std::string strip_trailing_whitespace(const std::string& line){
         auto ipos = line.find_last_not_of(" \t\n\v\f\r");
         if (ipos == std::string::npos){
@@ -59,16 +78,27 @@ namespace internal{
             return line.substr(0, ipos+1);
         }
     }
+    std::string strip_leading_whitespace(const std::string& line){
+        auto ipos = line.find_first_not_of(" \t\n\v\f\r");
+        if (ipos == std::string::npos){
+            // No whitespace found, return whole string
+            return line;
+        }
+        else{
+            return line.substr(ipos);
+        }
+    }
 
     /// Return a chunk of lines starting from a line that begins with starting_key and ends before the first empty line
     std::vector<std::string> get_line_chunk(
                                             const std::vector<std::string>& lines,
-                                            const std::string& starting_key
+                                            const std::string& starting_key,
+                                            const std::optional<std::size_t>& initial_index = std::nullopt
                                             )
     {
         // block starts with the key
         size_t istart = std::string::npos;
-        for (auto i = 0; i < lines.size(); ++i){
+        for (auto i = initial_index.value_or(0); i < lines.size(); ++i){
             if (lines[i].find(starting_key) == 0){
                 istart = i; break;
             }
@@ -94,6 +124,26 @@ namespace internal{
         auto f = [&locale] (char ch) { return std::use_facet<std::ctype<char>>(locale).toupper(ch); };
         std::transform(s.begin(), s.end(), s.begin(), f);
         return s;
+    }
+
+    auto read_allnum_from_line(const std::string& line){
+        auto vals = strsplit(strip_line_comment(line), " ");
+        std::vector<double> o;
+        for (auto v : vals){
+            if (!v.empty()){
+                // Replace the D or d in FORTRAN scientific notation with e
+                // because C++ (and everything else) uses e for exponentiation in
+                // scientific notation
+                std::string v_e = std::regex_replace(v, std::regex("[Dd]"), "e");
+                // Replace spaces with nothing
+                std::string v_ew = std::regex_replace(v_e, std::regex("\\s+"), "");
+                if (v_ew.empty()){
+                    continue;
+                }
+                o.push_back(strtod(v_ew.c_str(), nullptr));
+            }
+        }
+        return o;
     }
 
     std::string read_file(const std::filesystem::path &path, bool replace_tabs = true){
@@ -221,6 +271,10 @@ struct ResidualResult{
     std::string DOI_EOS = "";
 };
 
+/**
+ * Method for converting modified-Benedict-Webb-Rubin EOS form to conventional 
+ * Helmholtz energy form
+ */ 
 auto BWR2FEQ(const std::vector<std::string>& lines){
     ResidualResult res;
     LineParser parser(lines);
@@ -279,6 +333,8 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
     double R_barL = read1();
     res.R = R_barL*100.0; // MBWR in FLD files uses L-bar for energy unit
     res.DOI_EOS = DOI_EOS;
+    
+//    res.R = 8.3144598; // TODO remove!!!!!
     
     double gamma_aspublished = -1/(gamma_FLD*gamma_FLD);
     // Leading coefficient in exp() in exponential term is then:
@@ -710,7 +766,7 @@ std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>& lines)
 }
 
 /**
- * Things that are obtained from parsing a residual Helmholtz
+ * Things that are obtained from parsing an ideal-gas Helmholtz
  * energy EOS
  */
 struct Alpha0Result{
@@ -814,7 +870,7 @@ struct HeaderResult{
     double HVupper_kJmol = 99999999, GWP100=99999999, RCL_vv = 99999999, ODP=99999999;
     std::string ASHRAE34 = "?", StdInChIstr = "?", StdInChIKey = "?", altid = "?", hash = "?";
     auto to_int(const std::string& s) -> int {
-        return strtol(s.c_str(), nullptr, 10);
+        return static_cast<int>(strtol(s.c_str(), nullptr, 10));
     }
     auto to_double(const std::string& s) -> int {
         return strtod(s.c_str(), nullptr);
@@ -1232,5 +1288,257 @@ public:
         return f;
     }
 };
+
+
+class HMXBNCfile{
+private:
+    const std::string contents;
+    const std::vector<std::string> lines;
+    std::vector<std::string> warnings, errors;
+public:
+    HMXBNCfile(const std::filesystem::path &path) : contents(internal::read_file(path)), lines(internal::strsplit(contents, "\n")){ };
+    
+    auto get_warnings(){ return warnings; }
+    auto get_errors(){ return errors; }
+    
+    auto convert_BNC(){
+        auto BNCchunk = internal::get_line_chunk(lines, "#BNC", 0);
+        
+        int j = static_cast<int>(BNCchunk.size()-1);
+        int jmax = j;
+        nlohmann::json entries = nlohmann::json::array();
+        while (j > 0){
+            // Locate the next pair
+            for (; j > 0; --j){
+                if(BNCchunk[j].find("!") == 0 && j != jmax)
+                    break;
+            }
+            std::vector<std::string> header, hashes;
+            if (j == 0){
+                break;
+            }
+            
+            for (auto k = j+1; k < jmax; ++k){
+                auto line = internal::strip_trailing_whitespace(internal::strip_leading_whitespace(BNCchunk[k]));
+                if (line.empty()){ continue; }
+                if (line.find("?") == 0){
+                    header.push_back(line.substr(1));
+                }
+                else if (line.find("/") != std::string::npos){
+                    hashes = internal::strsplit(line, "/");
+                }
+                else if (line.find("TC") == 0 || line.find("VC") == 0){
+                }
+                else if (line.find("PR1") == 0){
+                }
+                else if (line.find("TRN") == 0){
+                }
+                else if (line.find("ST1") == 0){
+                }
+                else{
+                    auto elements = internal::strsplit(internal::strip_line_comment(line), " ");
+                    
+                    std::vector<double> nums;
+                    std::string function_name;
+                    for (const auto el : elements){
+                        // First element is the name of the function
+                        if (function_name.empty()){
+                            function_name = el;
+                            continue;
+                        }
+                        if (el.size() > 0){
+                            nums.push_back(strtod(el.c_str(), nullptr));
+                        }
+                    }
+                    
+                    entries.push_back({
+                        {"info", internal::strjoin(header,"\n")},
+                        {"BiBTeX", "?"},
+                        {"hash1", hashes[0]},
+                        {"hash2", hashes[1]},
+                        {"betaT", nums[0]},
+                        {"gammaT", nums[1]},
+                        {"betaV", nums[2]},
+                        {"gammaV", nums[3]},
+                        {"F", nums[4]},
+                        {"function", function_name}
+                    });
+                }
+            }
+            jmax = j;
+        }
+        return entries;
+    }
+    
+    auto convert_MXM(){
+        std::vector<double> starting_indices;
+        for (auto i = 0; i < lines.size(); ++i){
+            if (lines[i].find("#MXM") == 0){
+                starting_indices.push_back(i);
+            }
+        }
+        
+        nlohmann::json terms = nlohmann::json::array();
+        
+        for (auto istart: starting_indices){
+            auto chunk = internal::get_line_chunk(lines, "#MXM", istart);
+            
+            if (chunk[1].find("XR0 ") == 0){
+                continue;
+            }
+            std::string function_name = chunk[1].substr(0, 3);
+            
+            std::vector<std::string> header_lines;
+            // Get all the header information
+            std::size_t i = 2;
+            for (; i < chunk.size(); ++i){
+                if (chunk[i].find("!") == 0){
+                    break;
+                }
+                auto line = internal::strip_line_leading_comment(chunk[i], "?");
+                if (line.find("`") != 0){
+                    header_lines.push_back(line);
+                }
+            }
+            if (i == chunk.size()){
+                continue;
+            }
+            std::string header = internal::strip_trailing_whitespace(internal::strjoin(header_lines, "\n"));
+            
+            // Figure out the number and types of terms
+            auto elements = internal::strsplit(internal::strip_line_comment(chunk[i+3]), " ");
+            
+            std::vector<int> numbers;
+            for (const auto el : elements){
+                if (el.size() > 0){
+                    numbers.push_back(strtod(el.c_str(), nullptr));
+                }
+            }
+            if (numbers.size() != 11){
+                throw std::invalid_argument("??");
+            }
+            std::size_t Npower = numbers[0], Npower_coeffs = numbers[1], N_GERG=numbers[3], N_GERG_coeffs=numbers[4], N_exp=numbers[5], N_exp_coeffs=numbers[6];
+            
+            std::vector<double> n,t,d,c,eta,beta,gamma,epsilon;
+            
+            if (Npower > 0 && N_GERG == 0 && N_exp == 0){
+                for (auto k = 1; k <= Npower; ++k){
+                    auto nums = internal::read_allnum_from_line(chunk[i+3+k]);
+                    if (nums.size() != Npower_coeffs){
+                        throw std::invalid_argument("wrong length");
+                    }
+                    n.push_back(nums[0]);
+                    t.push_back(nums[1]);
+                    d.push_back(nums[2]);
+                    c.push_back(nums[3]);
+                }
+                if (n.size() != Npower){
+                    throw std::invalid_argument("Didn't collect the right number of terms");
+                }
+                terms.push_back({
+                    {"Name", function_name},
+                    {"type", "Exponential"},
+                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-delta^c_i)"},
+                    {"description", header},
+                    {"n",n}, {"t",t}, {"d",d}, {"l", c}
+                });
+            }
+            else if (Npower > 0 && N_GERG > 0 && N_exp == 0){
+                for (auto k = 1; k <= Npower; ++k){
+                    auto nums = internal::read_allnum_from_line(chunk[i+3+k]);
+                    if (nums.size() != Npower_coeffs){
+                        throw std::invalid_argument("wrong length");
+                    }
+                    n.push_back(nums[0]);
+                    t.push_back(nums[1]);
+                    d.push_back(nums[2]);
+                    c.push_back(nums[3]);
+                    eta.push_back(0);
+                    beta.push_back(0);
+                    gamma.push_back(0);
+                    epsilon.push_back(0);
+                }
+                for (auto k = Npower+1; k <= Npower+N_GERG; ++k){
+                    auto nums = internal::read_allnum_from_line(chunk[i+3+k]);
+                    if (nums.size() != N_GERG_coeffs){
+                        throw std::invalid_argument("wrong length");
+                    }
+                    n.push_back(nums[0]);
+                    t.push_back(nums[1]);
+                    d.push_back(nums[2]);
+                    eta.push_back(nums[3]);
+                    beta.push_back(nums[4]);
+                    gamma.push_back(nums[5]);
+                    epsilon.push_back(nums[6]);
+                }
+                if (n.size() != Npower + N_GERG){
+                    throw std::invalid_argument("Didn't collect the right number of terms");
+                }
+                terms.push_back({
+                    {"Name", function_name},
+                    {"type", "GERG-2008"},
+                    {"Npower", Npower},
+                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-beta_i*(tau-gamma_i)^2-eta_i*(delta-epsilon_i)^2)"},
+                    {"description", header},
+                    {"n",n}, {"t",t}, {"d",d}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
+                });
+            }
+            else if (Npower > 0 && N_GERG == 0 && N_exp > 0){
+                for (auto k = 1; k <= Npower; ++k){
+                    auto nums = internal::read_allnum_from_line(chunk[i+3+k]);
+                    if (nums.size() != Npower_coeffs){
+                        throw std::invalid_argument("wrong length");
+                    }
+                    n.push_back(nums[0]);
+                    t.push_back(nums[1]);
+                    d.push_back(nums[2]);
+                    c.push_back(nums[3]);
+                    eta.push_back(0);
+                    beta.push_back(0);
+                    gamma.push_back(0);
+                    epsilon.push_back(0);
+                }
+                for (auto k = Npower+1; k <= Npower+N_exp; ++k){
+                    auto nums = internal::read_allnum_from_line(chunk[i+3+k]);
+                    if (nums.size() != N_exp_coeffs){
+                        throw std::invalid_argument("wrong length");
+                    }
+                    n.push_back(nums[0]);
+                    t.push_back(nums[1]);
+                    d.push_back(nums[2]);
+                    c.push_back(0);
+                    eta.push_back(nums[3]);
+                    beta.push_back(nums[4]);
+                    gamma.push_back(nums[5]);
+                    epsilon.push_back(nums[6]);
+                }
+                if (n.size() != Npower + N_exp){
+                    throw std::invalid_argument("Didn't collect the right number of terms");
+                }
+                
+                terms.push_back({
+                    {"Name", function_name},
+                    {"type", "Gaussian+Exponential"},
+                    {"Npower", Npower},
+                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-beta_i*(tau-gamma_i)^2-eta_i*(delta-epsilon_i)^2)"},
+                    {"description", header},
+                    {"n",n}, {"t",t}, {"d",d}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
+                });
+            }
+            else{
+                throw std::invalid_argument("Unable to make sense of how to parse this set of terms");
+            }
+        }
+        return terms;
+    }
+    
+    auto make_jsons(const std::string& name){
+        auto BIP = convert_BNC();
+        auto deps = convert_MXM();
+        std::cout << BIP.dump(2) << std::endl;
+        return std::make_tuple(deps, BIP);
+    }
+};
+
 
 }
