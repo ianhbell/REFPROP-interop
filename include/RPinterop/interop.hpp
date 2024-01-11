@@ -95,6 +95,27 @@ namespace internal{
         std::transform(s.begin(), s.end(), s.begin(), f);
         return s;
     }
+
+    std::string read_file(const std::filesystem::path &path, bool replace_tabs = true){
+        
+        std::ifstream ifs(path);
+        if (!ifs){
+            throw std::invalid_argument(path);
+        }
+        std::stringstream buffer;  buffer << ifs.rdbuf();
+        
+        std::string contents = buffer.str();
+        
+        if (contents.find("\t") != std::string::npos){
+            if(replace_tabs){
+                std::regex_replace(contents, std::regex("\t"), "    ");
+            }
+            else{
+                throw std::invalid_argument("Tabs found in the file "+path.string()+". Replace them with spaces.");
+            }
+        }
+        return buffer.str();
+    }
 }
 
 /***
@@ -1033,29 +1054,9 @@ class FLDfile{
 private:
     const std::string contents;
     const std::vector<std::string> lines;
-    std::string read_file(const std::filesystem::path &path, bool replace_tabs = true){
-        
-        std::ifstream ifs(path);
-        if (!ifs){
-            throw std::invalid_argument(path);
-        }
-        std::stringstream buffer;  buffer << ifs.rdbuf();
-        
-        std::string contents = buffer.str();
-        
-        if (contents.find("\t") != std::string::npos){
-            if(replace_tabs){
-                std::regex_replace(contents, std::regex("\t"), "    ");
-            }
-            else{
-                throw std::invalid_argument("Tabs found in the file "+path.string()+". Replace them with spaces.");
-            }
-        }
-        return buffer.str();
-    }
     std::vector<std::string> warnings, errors;
 public:
-    FLDfile(const std::filesystem::path &path) : contents(read_file(path)), lines(internal::strsplit(contents, "\n")){ };
+    FLDfile(const std::filesystem::path &path) : contents(internal::read_file(path)), lines(internal::strsplit(contents, "\n")){ };
     
     auto get_warnings(){ return warnings; }
     auto get_errors(){ return errors; }
