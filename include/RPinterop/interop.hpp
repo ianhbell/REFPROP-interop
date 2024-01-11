@@ -275,7 +275,7 @@ struct ResidualResult{
  * Method for converting modified-Benedict-Webb-Rubin EOS form to conventional 
  * Helmholtz energy form
  */ 
-auto BWR2FEQ(const std::vector<std::string>& lines){
+inline auto BWR2FEQ(const std::vector<std::string>& lines){
     ResidualResult res;
     LineParser parser(lines);
     
@@ -418,7 +418,7 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
     return res;
 }
 
-std::optional<ResidualResult> parse_ECS(const std::vector<std::string>& lines){
+inline std::optional<ResidualResult> parse_ECS(const std::vector<std::string>& lines){
     ResidualResult res;
     LineParser parser(lines);
     
@@ -513,7 +513,7 @@ std::optional<ResidualResult> parse_ECS(const std::vector<std::string>& lines){
 Given a string that contains an EOS block, return its
 JSON representation
 */
-std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>& lines){
+inline std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>& lines){
     ResidualResult res;
     LineParser parser(lines);
     
@@ -777,7 +777,7 @@ struct Alpha0Result{
     nlohmann::json alpha0;
 };
 
-Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tri){
+inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tri){
     Alpha0Result a;
     
     LineParser parser(lines);
@@ -920,7 +920,7 @@ struct HeaderResult{
     }
 };
 
-HeaderResult convert_header(const std::vector<std::string>& lines){
+inline HeaderResult convert_header(const std::vector<std::string>& lines){
     HeaderResult h;
     std::size_t i = 0;
     auto _read1str = [](const std::string &line){
@@ -982,7 +982,7 @@ HeaderResult convert_header(const std::vector<std::string>& lines){
     return h;
 }
 
-auto get_ancillary_description(const std::string& key){
+inline auto get_ancillary_description(const std::string& key){
     const std::map<std::string, std::string> keys = {
         // Most are in this form:
         {"PS5",  "P=Pc*EXP[SUM(Ni*Theta^ti)*Tc/T]"},
@@ -1008,7 +1008,7 @@ auto get_ancillary_description(const std::string& key){
     }
 };
 
-nlohmann::json get_ancillary(const std::vector<std::string>& lines){
+inline nlohmann::json get_ancillary(const std::vector<std::string>& lines){
     
     LineParser parser(lines);
     
@@ -1096,7 +1096,7 @@ nlohmann::json get_ancillary(const std::vector<std::string>& lines){
     };
 }
 
-nlohmann::json get_all_ancillaries(const std::vector<std::string>& lines){
+inline nlohmann::json get_all_ancillaries(const std::vector<std::string>& lines){
     return {
         {"pS", get_ancillary(internal::get_line_chunk(lines, "#PS"))},
         {"rhoV", get_ancillary(internal::get_line_chunk(lines, "#DV"))},
