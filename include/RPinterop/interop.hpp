@@ -14,7 +14,7 @@ namespace RPinterop{
 namespace internal{
 
     // for string delimiter (https://stackoverflow.com/a/46931770)
-    std::vector<std::string> strsplit (const std::string& s, const std::string& delimiter) {
+    inline std::vector<std::string> strsplit (const std::string& s, const std::string& delimiter) {
         std::size_t pos_start = 0,
                pos_end = std::string::npos,
                delim_len = delimiter.length();
@@ -30,7 +30,7 @@ namespace internal{
         result.push_back (s.substr (pos_start));
         return result;
     }
-    std::string strjoin(const std::vector<std::string> &lines, const std::string& delim){
+    inline std::string strjoin(const std::vector<std::string> &lines, const std::string& delim){
         if (lines.empty()){ return ""; }
         std::string result = lines[0];
         for (auto i = 1; i < lines.size(); ++i){
@@ -42,7 +42,7 @@ namespace internal{
     /**
     For a line with "!", return all characters before (non-inclusive) the "!", otherwise return the whole string
      */
-    std::string strip_line_comment(const std::string& line){
+    inline std::string strip_line_comment(const std::string& line){
         auto ipos = line.find_first_of("!");
         if (ipos == std::string::npos){
             // No comment found, return whole string
@@ -56,7 +56,7 @@ namespace internal{
     /**
     For a line with a character, return all characters after the character, otherwise return the whole string
      */
-    std::string strip_line_leading_comment(const std::string& line, const std::string& comment_char = "!"){
+    inline std::string strip_line_leading_comment(const std::string& line, const std::string& comment_char = "!"){
         auto ipos = line.find_first_of(comment_char);
         if (ipos == std::string::npos){
             // No comment found, return whole string
@@ -68,7 +68,7 @@ namespace internal{
         }
     }
 
-    std::string strip_trailing_whitespace(const std::string& line){
+    inline std::string strip_trailing_whitespace(const std::string& line){
         auto ipos = line.find_last_not_of(" \t\n\v\f\r");
         if (ipos == std::string::npos){
             // No whitespace found, return whole string
@@ -78,7 +78,7 @@ namespace internal{
             return line.substr(0, ipos+1);
         }
     }
-    std::string strip_leading_whitespace(const std::string& line){
+    inline std::string strip_leading_whitespace(const std::string& line){
         auto ipos = line.find_first_not_of(" \t\n\v\f\r");
         if (ipos == std::string::npos){
             // No whitespace found, return whole string
@@ -90,7 +90,7 @@ namespace internal{
     }
 
     /// Return a chunk of lines starting from a line that begins with starting_key and ends before the first empty line
-    std::vector<std::string> get_line_chunk(
+    inline std::vector<std::string> get_line_chunk(
                                             const std::vector<std::string>& lines,
                                             const std::string& starting_key,
                                             const std::optional<std::size_t>& initial_index = std::nullopt
@@ -119,14 +119,14 @@ namespace internal{
         return std::vector<std::string>(lines.begin()+istart, lines.begin()+iend);
     }
 
-    std::string to_upper(std::string s){
+    inline std::string to_upper(std::string s){
         std::locale locale;
         auto f = [&locale] (char ch) { return std::use_facet<std::ctype<char>>(locale).toupper(ch); };
         std::transform(s.begin(), s.end(), s.begin(), f);
         return s;
     }
 
-    auto read_allnum_from_line(const std::string& line){
+    inline auto read_allnum_from_line(const std::string& line){
         auto vals = strsplit(strip_line_comment(line), " ");
         std::vector<double> o;
         for (auto v : vals){
@@ -146,7 +146,7 @@ namespace internal{
         return o;
     }
 
-    std::string read_file(const std::filesystem::path &path, bool replace_tabs = true){
+    inline std::string read_file(const std::filesystem::path &path, bool replace_tabs = true){
         
         std::ifstream ifs(path);
         if (!ifs){
@@ -304,7 +304,6 @@ auto BWR2FEQ(const std::vector<std::string>& lines){
     parser.set_i(i);
     
     // These lambdas are just for concision in the next block
-    auto readnline = [&](const std::string& line, int n){ return parser.read_Nnum_from_line(line, n); };
     auto readallline = [&](const std::string& line){ return parser.read_allnum_from_line(line); };
     auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
     auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
@@ -519,7 +518,6 @@ std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>& lines)
     LineParser parser(lines);
     
     // These lambdas are just for concision in the next block
-    auto readnline = [&](const std::string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
     auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
     auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
     auto read1str = [&](){ return parser.read_1str_and_increment(); };
@@ -614,6 +612,9 @@ std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>& lines)
         }
         else if (Nnormalcount == 5){
             return {{"type", "ResidualHelmholtzExponential"}, {"n", n}, {"t", t}, {"d", d}, {"l", l}, {"g", g}};
+        }
+        else{
+            throw std::invalid_argument("Normalcould is not correct");
         }
     };
 
@@ -785,7 +786,6 @@ Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tri){
     auto readnline = [&](const std::string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
     auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
     auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
-    auto read1str = [&](){ return parser.read_1str_and_increment(); };
     
     a.cp0_pointer = parser.read_1str_from_line(lines[1]);
     
@@ -1013,10 +1013,8 @@ nlohmann::json get_ancillary(const std::vector<std::string>& lines){
     LineParser parser(lines);
     
     // These lambdas are just for concision in the next block
-    auto readnline = [&](const std::string& line, std::size_t n){ return parser.read_Nnum_from_line(line, n); };
     auto readn = [&](std::size_t n){ return parser.read_Nnum_and_increment(n); };
     auto read1 = [&](){ return parser.read_Nnum_and_increment(1)[0]; };
-    auto read1str = [&](){ return parser.read_1str_and_increment(); };
     
     auto modelname = lines[1].substr(0, 3);
     
@@ -1033,9 +1031,9 @@ nlohmann::json get_ancillary(const std::vector<std::string>& lines){
     parser.set_i(i);
     
     double Tmin_K = read1();
-    double Tmax = read1();
-    double ph1 = read1();
-    double ph2 = read1();
+    double Tmax_K = read1();
+    read1(); // placeholder
+    read1(); // placeholder
     auto reducing = readn(2);
     reducing[1] *= 1000; // REFPROP uses mol/L & kPa, CoolProp uses mol/m^3 & Pa, multiply by 1000 to convert
     auto Ncoeffs = readn(6);
@@ -1087,7 +1085,7 @@ nlohmann::json get_ancillary(const std::vector<std::string>& lines){
     
     return {
         {"T_r", reducing[0]},
-        {"Tmax", reducing[0]},
+        {"Tmax", Tmax_K},
         {"Tmin", Tmin_K},
         {"description", desc},
         {"n", n},
@@ -1340,7 +1338,7 @@ public:
                     
                     std::vector<double> nums;
                     std::string function_name;
-                    for (const auto el : elements){
+                    for (const auto& el : elements){
                         // First element is the name of the function
                         if (function_name.empty()){
                             function_name = el;
@@ -1409,7 +1407,7 @@ public:
             auto elements = internal::strsplit(internal::strip_line_comment(chunk[i+3]), " ");
             
             std::vector<int> numbers;
-            for (const auto el : elements){
+            for (const auto& el : elements){
                 if (el.size() > 0){
                     numbers.push_back(strtod(el.c_str(), nullptr));
                 }
