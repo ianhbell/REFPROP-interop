@@ -656,7 +656,7 @@ inline std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>&
             };
         };
         
-        for (auto& line : lines){
+        for (auto i = 0; i < lines.size(); ++i){
             auto z = readn(NGaussiancount);
             assert(NGaussiancount == 12);
             // Determine what kind of term it is and store accordingly
@@ -731,7 +731,7 @@ inline std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>&
     };
     auto read_Gao = [&readn](const std::vector<std::string> &lines, size_t NGaocount) -> nlohmann::json{
         std::vector<double> n,t,d,eta,beta,gamma,epsilon,b;
-        for (auto& line : lines){
+        for (auto i = 0; i < lines.size(); ++i){
             auto z = readn(NGaocount);
             assert(NGaocount == 12);
             n.push_back(z[0]);
