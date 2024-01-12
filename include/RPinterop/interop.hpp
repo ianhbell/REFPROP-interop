@@ -1251,6 +1251,7 @@ public:
             {"INCHI_STRING", head.StdInChIstr},
             {"NAME", name},
             {"REFPROP_NAME", name},
+            {"HASH", head.hash},
             {"SMILES", "?"},
             {"DIPOLE", head.dipole_D*3.33564e-30},
             {"DIPOLE_units", "C*m"}
