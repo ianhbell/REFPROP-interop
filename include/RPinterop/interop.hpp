@@ -1533,7 +1533,7 @@ public:
         return terms;
     }
     
-    auto make_jsons(const std::string& name){
+    auto make_jsons(){
         auto BIP = convert_BNC();
         auto deps = convert_MXM();
         return std::make_tuple(BIP, deps);
