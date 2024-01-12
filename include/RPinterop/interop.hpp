@@ -150,7 +150,7 @@ namespace internal{
         
         std::ifstream ifs(path);
         if (!ifs){
-            throw std::invalid_argument(path);
+            throw std::invalid_argument(path.string());
         }
         std::stringstream buffer;  buffer << ifs.rdbuf();
         
@@ -185,7 +185,7 @@ public:
         return lines_[i];
     }
     /// Set the index of the next line
-    void set_i(std::size_t i){ this->i = i; }
+    void set_i(std::size_t i_){ this->i = i_; }
     /// Get the index of the next line
     std::size_t get_i() const { return i; }
     
@@ -374,8 +374,8 @@ inline auto BWR2FEQ(const std::vector<std::string>& lines){
     // See Table 3.5 from Span book. But first convert leading coefficients to the form of Eq 3.26,
     // but here *without* the mysterious term in the denominator
     std::vector<double> n(20, 0.0);
-    for (auto i = 20; i < 33; ++i)
-        n.push_back(cc[i]*pow(res.rhored_molL, r[i-20]-1)*pow(res.Tred_K, s[i-20]-1)/res.R);
+    for (auto j = 20; j < 33; ++j)
+        n.push_back(cc[j]*pow(res.rhored_molL, r[j-20]-1)*pow(res.Tred_K, s[j-20]-1)/res.R);
     
     addterm(n[20]/(2*g1) + n[22]/(2*g2) + n[24]/g3 + 3*n[26]/g4 + 12*n[28]/g5 + 60*n[30]/g6, 3, 0, 0, 0);
     addterm(n[21]/(2*g1) + n[25]/g3 + 12*n[29]/g5 + 60*n[31]/g6, 4, 0, 0, 0);
@@ -469,13 +469,13 @@ inline std::optional<ResidualResult> parse_ECS(const std::vector<std::string>& l
         }
         return std::make_tuple(coeffs, exps);
     };
-    int NTF = parser.read_1num_and_increment();
+    int NTF = static_cast<int>(parser.read_1num_and_increment());
     auto [fT_coeffs, fT_exps] = read_coeffs_exps(NTF);
-    int NDF = parser.read_1num_and_increment();
+    int NDF = static_cast<int>(parser.read_1num_and_increment());
     auto [fD_coeffs, fD_exps] = read_coeffs_exps(NDF);
-    int NTH = parser.read_1num_and_increment();
+    int NTH = static_cast<int>(parser.read_1num_and_increment());
     auto [hT_coeffs, hT_exps] = read_coeffs_exps(NTH);
-    int NDH = parser.read_1num_and_increment();
+    int NDH = static_cast<int>(parser.read_1num_and_increment());
     auto [hD_coeffs, hD_exps] = read_coeffs_exps(NDH);
     
     if (fT_coeffs.size() == 2 && fD_coeffs.empty() && hT_coeffs.size() == 2 && hD_coeffs.empty()){
@@ -580,11 +580,11 @@ inline std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>&
 
     // And now we read the EOS
     auto termcounts = readn(12);
-    std::size_t Nnormal = termcounts[0];
-    std::size_t Nnormalcount = termcounts[1]; // Parameters per term
-    std::size_t NGaussian = termcounts[2];
-    std::size_t NGaussiancount = termcounts[3]; // Parameters per term
-    std::size_t NGao = termcounts[4];
+    std::size_t Nnormal = static_cast<std::size_t>(termcounts[0]);
+    std::size_t Nnormalcount = static_cast<std::size_t>(termcounts[1]); // Parameters per term
+    std::size_t NGaussian = static_cast<std::size_t>(termcounts[2]);
+    std::size_t NGaussiancount = static_cast<std::size_t>(termcounts[3]); // Parameters per term
+    std::size_t NGao = static_cast<std::size_t>(termcounts[4]);
 
     auto read_normal = [&readn](const std::vector<std::string> &lines, std::size_t Nnormalcount) -> nlohmann::json {
         std::vector<double> n, t, d, l, g;
@@ -1040,7 +1040,7 @@ inline nlohmann::json get_ancillary(const std::vector<std::string>& lines){
     auto Ncoeffs = readn(6);
     
     std::vector<double> n, t;
-    for (auto i = 0; i < Ncoeffs[0]; ++i){
+    for (auto k = 0; k < Ncoeffs[0]; ++k){
         auto z = readn(2);
         n.push_back(z[0]);
         t.push_back(z[1]);
@@ -1411,7 +1411,7 @@ public:
             std::vector<int> numbers;
             for (const auto& el : elements){
                 if (el.size() > 0){
-                    numbers.push_back(strtod(el.c_str(), nullptr));
+                    numbers.push_back(static_cast<int>(strtod(el.c_str(), nullptr)));
                 }
             }
             if (numbers.size() != 11){
