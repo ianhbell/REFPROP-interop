@@ -955,6 +955,7 @@ inline HeaderResult convert_header(const std::vector<std::string>& lines){
     h.acentric = read1();
     h.dipole_D = read1();
     h.refstate = read1str();
+    if (h.refstate.find("OT") == 0){ read1(); }
     h.RPversion = read1str();
     
     if (h.RPversion == "10.0"){
