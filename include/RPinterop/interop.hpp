@@ -1467,9 +1467,9 @@ public:
                     t.push_back(nums[1]);
                     d.push_back(nums[2]);
                     eta.push_back(nums[3]);
-                    beta.push_back(nums[4]);
-                    gamma.push_back(nums[5]);
-                    epsilon.push_back(nums[6]);
+                    epsilon.push_back(nums[4]);
+                    beta.push_back(nums[5]);
+                    gamma.push_back(nums[6]);
                 }
                 if (n.size() != Npower + N_GERG){
                     throw std::invalid_argument("Didn't collect the right number of terms");
@@ -1508,9 +1508,10 @@ public:
                     d.push_back(nums[2]);
                     c.push_back(0);
                     eta.push_back(nums[3]);
-                    beta.push_back(nums[4]);
-                    gamma.push_back(nums[5]);
-                    epsilon.push_back(nums[6]);
+                    epsilon.push_back(nums[4]);
+                    beta.push_back(nums[5]);
+                    gamma.push_back(nums[6]);
+                    
                 }
                 if (n.size() != Npower + N_exp){
                     throw std::invalid_argument("Didn't collect the right number of terms");
