@@ -874,7 +874,7 @@ struct HeaderResult{
         return static_cast<int>(strtol(s.c_str(), nullptr, 10));
     }
     auto to_double(const std::string& s) -> double {
-        return strtod(s.c_str(), nullptr);
+        return static_cast<int>(strtod(s.c_str(), nullptr));
     }
     void set(const std::string &k, const std::string &val){
         if (k == "FAMILY"){
