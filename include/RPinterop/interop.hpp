@@ -881,7 +881,7 @@ struct HeaderResult{
             family = val;
         }
         else if (k == "UN"){
-            UNnumber = to_int(val);
+            UNnumber = val;
         }
         else if (k == "INCHI"){
             StdInChIstr = val;
@@ -974,7 +974,7 @@ inline HeaderResult convert_header(const std::vector<std::string>& lines){
         }
     }
     else if (h.RPversion == "9.0" || h.RPversion == "8.0"){
-        h.UNnumber = read1();
+        h.UNnumber = read1str();
         h.family = read1str();
         if (i < lines.size()-1){
             h.HVupper_kJmol = read1();
