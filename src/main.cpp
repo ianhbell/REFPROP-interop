@@ -30,7 +30,7 @@ int main(int argc, char **argv)
                 if (entry.path().filename().extension() != ".FLD"){
                     continue;
                 }
-                std::string name = entry.path().filename().replace_extension("");
+                std::string name = entry.path().filename().replace_extension("").string();
                 
                 try{
                     RPinterop::FLDfile FLD(entry.path());
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
         }
         else if (infile){
             RPinterop::FLDfile FLD(infile.Get());
-            std::string name = std::filesystem::path(infile.Get()).filename().replace_extension("");
+            std::string name = std::filesystem::path(infile.Get()).filename().replace_extension("").string();
             if (!outfile.Get().empty()){
                 std::ofstream ofs(outfile.Get());
                 ofs << FLD.make_json(name).dump(1);

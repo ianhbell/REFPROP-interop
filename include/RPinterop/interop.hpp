@@ -7,6 +7,7 @@
 #include <vector>
 #include <set>
 #include <regex>
+#include <optional>
 
 #include "nlohmann/json.hpp"
 
@@ -811,8 +812,8 @@ inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tr
     a.cp0red_JmolK = r[1];
     
     auto N = readn(7);
-    auto Npoly = N[0];
-    auto NPlanck = N[1];
+    size_t Npoly = N[0];
+    size_t NPlanck = N[1];
     for (auto i = 2; i < N.size(); ++i){
         if (N[i] != 0){
             throw std::invalid_argument("Found a cp0 term that cannot currently be parsed");
@@ -872,7 +873,7 @@ struct HeaderResult{
     auto to_int(const std::string& s) -> int {
         return static_cast<int>(strtol(s.c_str(), nullptr, 10));
     }
-    auto to_double(const std::string& s) -> int {
+    auto to_double(const std::string& s) -> double {
         return strtod(s.c_str(), nullptr);
     }
     void set(const std::string &k, const std::string &val){
