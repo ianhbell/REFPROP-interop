@@ -812,8 +812,8 @@ inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tr
     a.cp0red_JmolK = r[1];
     
     auto N = readn(7);
-    size_t Npoly = N[0];
-    size_t NPlanck = N[1];
+    size_t Npoly = static_cast<std::size_t>(N[0]);
+    size_t NPlanck = static_cast<std::size_t>(N[1]);
     for (auto i = 2U; i < N.size(); ++i){
         if (N[i] != 0){
             throw std::invalid_argument("Found a cp0 term that cannot currently be parsed");
