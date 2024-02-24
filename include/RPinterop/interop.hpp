@@ -1372,7 +1372,7 @@ public:
     }
     
     auto convert_MXM(){
-        std::vector<double> starting_indices;
+        std::vector<std::size_t> starting_indices;
         for (auto i = 0U; i < lines.size(); ++i){
             if (lines[i].find("#MXM") == 0){
                 starting_indices.push_back(i);
