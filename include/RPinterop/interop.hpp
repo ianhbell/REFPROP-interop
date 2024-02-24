@@ -385,8 +385,8 @@ inline auto BWR2FEQ(const std::vector<std::string>& lines){
     // For polynomial term, see page 26 of Span monograph, straightforward conversion to alphar contribution
     // Converting from Eq. 3.28 to 3.26 in the Span formulation, but with an additional factor of d2[i]-1 in the denominator
     // to match Younglove and McLinden, Eq. B6. This is also what is done in REFPROP
-    for (int i =1; i < 20; ++i){
-        addterm(cc[i]*pow(res.rhored_molL, d2[i]-1)*pow(res.Tred_K, t2[i]-1)/res.R/(d2[i]-1), 1-t2[i], d2[i]-1, 0, 0);
+    for (int k = 1; k < 20; ++k){
+        addterm(cc[k]*pow(res.rhored_molL, d2[k]-1)*pow(res.Tred_K, t2[k]-1)/res.R/(d2[k]-1), 1-t2[k], d2[k]-1, 0, 0);
     }
     
     addterm(-(n[20]/(2*g1) + n[22]/(2*g2) + n[24]/g3 + 3*n[26]/g4 + 12*n[28]/g5 + 60*n[30]/g6), 3, 0, l, g);
