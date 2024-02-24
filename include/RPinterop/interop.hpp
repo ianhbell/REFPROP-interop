@@ -375,8 +375,8 @@ inline auto BWR2FEQ(const std::vector<std::string>& lines){
     // See Table 3.5 from Span book. But first convert leading coefficients to the form of Eq 3.26,
     // but here *without* the mysterious term in the denominator
     std::vector<double> n(20, 0.0);
-    for (auto j = 20; j < 33; ++j)
-        n.push_back(cc[j]*pow(res.rhored_molL, r[j-20]-1)*pow(res.Tred_K, s[j-20]-1)/res.R);
+    for (auto k = 20; k < 33; ++k)
+        n.push_back(cc[k]*pow(res.rhored_molL, r[k-20]-1)*pow(res.Tred_K, s[k-20]-1)/res.R);
     
     addterm(n[20]/(2*g1) + n[22]/(2*g2) + n[24]/g3 + 3*n[26]/g4 + 12*n[28]/g5 + 60*n[30]/g6, 3, 0, 0, 0);
     addterm(n[21]/(2*g1) + n[25]/g3 + 12*n[29]/g5 + 60*n[31]/g6, 4, 0, 0, 0);
