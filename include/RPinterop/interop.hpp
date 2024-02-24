@@ -159,13 +159,13 @@ namespace internal{
         
         if (contents.find("\t") != std::string::npos){
             if(replace_tabs){
-                std::regex_replace(contents, std::regex("\t"), "    ");
+                contents = std::regex_replace(contents, std::regex("\t"), "    ");
             }
             else{
                 throw std::invalid_argument("Tabs found in the file "+path.string()+". Replace them with spaces.");
             }
         }
-        return buffer.str();
+        return contents;
     }
 }
 
