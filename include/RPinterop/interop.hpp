@@ -501,7 +501,7 @@ inline std::optional<ResidualResult> parse_ECS(const std::vector<std::string>& l
                 {"fluid", jfluid}
             }}
         };
-        std::cout << j.dump(1) << std::endl;
+        // std::cout << j.dump(1) << std::endl;
         res.alphar = j;
     }
     else{
