@@ -34,7 +34,7 @@ namespace internal{
     inline std::string strjoin(const std::vector<std::string> &lines, const std::string& delim){
         if (lines.empty()){ return ""; }
         std::string result = lines[0];
-        for (auto i = 1; i < lines.size(); ++i){
+        for (auto i = 1U; i < lines.size(); ++i){
             result += delim + lines[i];
         }
         return result;
@@ -287,7 +287,7 @@ inline auto BWR2FEQ(const std::vector<std::string>& lines){
     
     // Find the first non-header row;
     size_t i = std::string::npos;
-    for (auto j = 2; j < lines.size(); ++j){
+    for (auto j = 2U; j < lines.size(); ++j){
         // First line not started by element in {:,?,!}, stop
         auto ind = lines[j].find_first_of(":?!");
         
@@ -430,7 +430,7 @@ inline std::optional<ResidualResult> parse_ECS(const std::vector<std::string>& l
     
     // Find the first non-header row;
     size_t i = std::string::npos;
-    for (auto j = 2; j < lines.size(); ++j){
+    for (auto j = 2U; j < lines.size(); ++j){
         // First line not started by element in {:,?,!}, stop
         auto ind = lines[j].find_first_of(":?!");
         
@@ -540,7 +540,7 @@ inline std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>&
     
     // Find the first non-header row;
     size_t i = std::string::npos; 
-    for (auto j = 2; j < lines.size(); ++j){
+    for (auto j = 2U; j < lines.size(); ++j){
         // First line not started by element in {:,?,!}, stop
         auto ind = lines[j].find_first_of(":?!");
         
@@ -657,7 +657,7 @@ inline std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>&
             };
         };
         
-        for (auto i = 0; i < lines.size(); ++i){
+        for (auto i = 0U; i < lines.size(); ++i){
             auto z = readn(NGaussiancount);
             assert(NGaussiancount == 12);
             // Determine what kind of term it is and store accordingly
@@ -732,7 +732,7 @@ inline std::optional<ResidualResult> convert_FEQ(const std::vector<std::string>&
     };
     auto read_Gao = [&readn](const std::vector<std::string> &lines, size_t NGaocount) -> nlohmann::json{
         std::vector<double> n,t,d,eta,beta,gamma,epsilon,b;
-        for (auto i = 0; i < lines.size(); ++i){
+        for (auto i = 0U; i < lines.size(); ++i){
             auto z = readn(NGaocount);
             assert(NGaocount == 12);
             n.push_back(z[0]);
@@ -792,7 +792,7 @@ inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tr
     
     // Find the first non-header row;
     size_t i = std::string::npos;
-    for (auto j = 2; j < lines.size(); ++j){
+    for (auto j = 2U; j < lines.size(); ++j){
         // First line not started by element in {:,?,!}, stop
         auto ind = lines[j].find_first_of(":?!");
         if(!lines[j].empty() && (ind == 0)){
@@ -814,7 +814,7 @@ inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tr
     auto N = readn(7);
     size_t Npoly = N[0];
     size_t NPlanck = N[1];
-    for (auto i = 2; i < N.size(); ++i){
+    for (auto i = 2U; i < N.size(); ++i){
         if (N[i] != 0){
             throw std::invalid_argument("Found a cp0 term that cannot currently be parsed");
         }
@@ -1022,7 +1022,7 @@ inline nlohmann::json get_ancillary(const std::vector<std::string>& lines){
     
     // Find the first non-header row;
     size_t i = std::string::npos;
-    for (auto j = 2; j < lines.size(); ++j){
+    for (auto j = 2U; j < lines.size(); ++j){
         // First line not started by element in {:,?,!}, stop
         auto ind = lines[j].find_first_of(":?!");
         if(!lines[j].empty() && (ind == 0)){
@@ -1373,7 +1373,7 @@ public:
     
     auto convert_MXM(){
         std::vector<double> starting_indices;
-        for (auto i = 0; i < lines.size(); ++i){
+        for (auto i = 0U; i < lines.size(); ++i){
             if (lines[i].find("#MXM") == 0){
                 starting_indices.push_back(i);
             }
@@ -1423,7 +1423,7 @@ public:
             std::vector<double> n,t,d,c,eta,beta,gamma,epsilon;
             
             if (Npower > 0 && N_GERG == 0 && N_exp == 0){
-                for (auto k = 1; k <= Npower; ++k){
+                for (auto k = 1U; k <= Npower; ++k){
                     auto nums = internal::read_allnum_from_line(chunk[i+3+k]);
                     if (nums.size() != Npower_coeffs){
                         throw std::invalid_argument("wrong length");
@@ -1445,7 +1445,7 @@ public:
                 });
             }
             else if (Npower > 0 && N_GERG > 0 && N_exp == 0){
-                for (auto k = 1; k <= Npower; ++k){
+                for (auto k = 1U; k <= Npower; ++k){
                     auto nums = internal::read_allnum_from_line(chunk[i+3+k]);
                     if (nums.size() != Npower_coeffs){
                         throw std::invalid_argument("wrong length");
@@ -1485,7 +1485,7 @@ public:
                 });
             }
             else if (Npower > 0 && N_GERG == 0 && N_exp > 0){
-                for (auto k = 1; k <= Npower; ++k){
+                for (auto k = 1U; k <= Npower; ++k){
                     auto nums = internal::read_allnum_from_line(chunk[i+3+k]);
                     if (nums.size() != Npower_coeffs){
                         throw std::invalid_argument("wrong length");
