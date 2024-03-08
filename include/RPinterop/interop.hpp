@@ -151,7 +151,7 @@ namespace internal{
         
         std::ifstream ifs(path);
         if (!ifs){
-            throw std::invalid_argument(path.string());
+            throw std::invalid_argument("Path to be loaded is not readable: " + path.string());
         }
         std::stringstream buffer;  buffer << ifs.rdbuf();
         
