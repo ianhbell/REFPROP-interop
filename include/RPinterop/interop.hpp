@@ -778,7 +778,12 @@ struct Alpha0Result{
     nlohmann::json alpha0;
 };
 
-inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tri){
+/**
+ \param lines The set of lines used for the ideal-gas part
+ \param Tri The reducing temperature used in the contribution, in K
+ \param R_alphar_JmolK The gas constant coming from the default residual EOS contribution, in J/mol/K. This may (or may not) be used depending on whether a scaling parameter for R is provided
+ */
+inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tri, double R_alphar_JmolK){
     Alpha0Result a;
     
     LineParser parser(lines);
@@ -810,6 +815,7 @@ inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tr
     auto r = readn(2);
     a.Tred_K = r[0];
     a.cp0red_JmolK = r[1];
+    double R_used_JmolK = R_alphar_JmolK;
     
     auto N = readn(7);
     size_t Npoly = static_cast<std::size_t>(N[0]);
@@ -820,25 +826,28 @@ inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tr
         }
     }
 
-    // cp0/R = c_i*T^t_i
-    auto read_polynomial = [&readnline, &a, &Tri](const std::vector<std::string> &lines) -> nlohmann::json {
+    // cp0/R = sum_i (c_i*T^t_i)
+    // the scaling factor on cp0 might not be the gas constant, so you need to correct because
+    // REFPROP files use cp0/K = sum_i (c_i*(T/Q)^t_i) = sum_i (c_i/(Q^t_i) * T^t_i)
+    // To get to cp0/R use (cp0/K)*(K/R)
+    auto read_polynomial = [&readnline, &a, &Tri, &R_used_JmolK](const std::vector<std::string> &lines) -> nlohmann::json {
         std::vector<double> c, t;
         for (auto line : lines){
             auto z = readnline(line, 2);
-            c.push_back(z[0]);
+            c.push_back(z[0]*a.cp0red_JmolK/R_used_JmolK/pow(a.Tred_K, z[1]));
             t.push_back(z[1]);
         }
-        return {{"type", "IdealGasHelmholtzCP0PolyT"}, {"c", c}, {"t", t}, {"T0", 298.15}, {"Tc", Tri}, {"R", a.cp0red_JmolK}};
+        return {{"type", "IdealGasHelmholtzCP0PolyT"}, {"c", c}, {"t", t}, {"T0", 298.15}, {"Tc", Tc}, {"R", R_used_JmolK}};
     };
     
-    auto read_Planck = [&readnline, &a, &Tri](const std::vector<std::string> &lines) -> nlohmann::json {
+    auto read_Planck = [&readnline, &a, &Tri, &R_used_JmolK](const std::vector<std::string> &lines) -> nlohmann::json {
         std::vector<double> n, v;
         for (auto line : lines){
             auto z = readnline(line, 2);
-            n.push_back(z[0]);
-            v.push_back(z[1]);
+            n.push_back(z[0]*a.cp0red_JmolK/R_used_JmolK);
+            v.push_back(z[1]*a.Tred_K);
         }
-        return {{"type", "IdealGasHelmholtzPlanckEinsteinFunctionT"}, {"n", n}, {"v", v}, {"T0", 298.15}, {"Tcrit", Tri}, {"R",a.cp0red_JmolK} };
+        return {{"type", "IdealGasHelmholtzPlanckEinsteinFunctionT"}, {"n", n}, {"v", v}, {"T0", 298.15}, {"Tcrit", Tc}, {"R", R_used_JmolK} };
     };
 
     a.alpha0 = nlohmann::json::array();
@@ -1262,7 +1271,6 @@ public:
 
     auto make_json(const std::string& name){
         auto head = convert_header(lines);
-        auto alpha0 = convert_CP0(internal::get_line_chunk(lines, "#AUX"), head.Tcrit_K);
         
         nlohmann::json ancillaries = nlohmann::json::object();
         try{
@@ -1274,6 +1282,7 @@ public:
         }
         
         auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
+        auto alpha0 = convert_CP0(internal::get_line_chunk(lines, "#AUX"), feq.value().Tred_K, feq.value().R);
         auto EOS = convert_EOS(feq.value(), alpha0, head);
 
         nlohmann::json f = {
