@@ -837,7 +837,7 @@ inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tr
             c.push_back(z[0]*a.cp0red_JmolK/R_used_JmolK/pow(a.Tred_K, z[1]));
             t.push_back(z[1]);
         }
-        return {{"type", "IdealGasHelmholtzCP0PolyT"}, {"c", c}, {"t", t}, {"T0", 298.15}, {"Tc", Tc}, {"R", R_used_JmolK}};
+        return {{"type", "IdealGasHelmholtzCP0PolyT"}, {"c", c}, {"t", t}, {"T0", 298.15}, {"Tc", Tri}, {"R", R_used_JmolK}};
     };
     
     auto read_Planck = [&readnline, &a, &Tri, &R_used_JmolK](const std::vector<std::string> &lines) -> nlohmann::json {
@@ -847,7 +847,7 @@ inline Alpha0Result convert_CP0(const std::vector<std::string>& lines, double Tr
             n.push_back(z[0]*a.cp0red_JmolK/R_used_JmolK);
             v.push_back(z[1]*a.Tred_K);
         }
-        return {{"type", "IdealGasHelmholtzPlanckEinsteinFunctionT"}, {"n", n}, {"v", v}, {"T0", 298.15}, {"Tcrit", Tc}, {"R", R_used_JmolK} };
+        return {{"type", "IdealGasHelmholtzPlanckEinsteinFunctionT"}, {"n", n}, {"v", v}, {"T0", 298.15}, {"Tcrit", Tri}, {"R", R_used_JmolK} };
     };
 
     a.alpha0 = nlohmann::json::array();
