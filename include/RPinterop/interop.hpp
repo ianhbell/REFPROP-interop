@@ -1096,7 +1096,7 @@ inline nlohmann::json get_ancillary(const std::vector<std::string>& lines){
     
     return {
         {"T_r", reducing[0]},
-        {"Tmax", Tmax_K},
+        {"Tmax", std::min(Tmax_K, reducing[0])},
         {"Tmin", Tmin_K},
         {"description", desc},
         {"n", n},
