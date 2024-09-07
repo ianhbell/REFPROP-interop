@@ -1115,6 +1115,27 @@ inline nlohmann::json get_all_ancillaries(const std::vector<std::string>& lines)
     };
 }
 
+inline auto get_rhoLV_ancillaries(double T, const nlohmann::json& jancillaries){
+    auto eval_ancillary = [T](const nlohmann::json &j){
+        std::valarray<double> n = j.at("n");
+        std::valarray<double> t = j.at("t");
+        double reducing_value = j.at("reducing_value");
+        double T_r = j.at("T_r");
+        auto Theta = 1.0 - T/T_r;
+        auto RHS = (pow(Theta, t)*n).sum();
+        if (j.at("using_tau_r")){
+            RHS *= T_r/T;
+        }
+        if (j.at("type") == "rhoLnoexp"){
+            return reducing_value*(1+RHS);
+        }
+        else{
+            return exp(RHS)*reducing_value;
+        }
+    };
+    return std::make_tuple(eval_ancillary(jancillaries.at("rhoL")), eval_ancillary(jancillaries.at("rhoV")));
+}
+
 class FLDfile{
 private:
     const std::string contents;
@@ -1126,8 +1147,8 @@ public:
     auto get_warnings(){ return warnings; }
     auto get_errors(){ return errors; }
 
-    nlohmann::json convert_EOS(const RPinterop::ResidualResult& feq, const RPinterop::Alpha0Result& alpha0, const HeaderResult& head){
-
+    nlohmann::json convert_EOS(const RPinterop::ResidualResult& feq, const RPinterop::Alpha0Result& alpha0, const HeaderResult& head, const nlohmann::json& ancillaries){
+        auto [rhoLtriple, rhoVtriple] = get_rhoLV_ancillaries(feq.Tmin_K, ancillaries);
         nlohmann::json STATES = {
             {"reducing", {
               {"T", feq.Tred_K},
@@ -1148,7 +1169,7 @@ public:
               {"hmolar_units", "J/mol"},
               {"p", feq.ptriple_kPa*1e3},
               {"p_units", "Pa"},
-              {"rhomolar", 9999999999999999.0},
+              {"rhomolar", rhoLtriple},
               {"rhomolar_units", "mol/m^3"},
               {"smolar", 99999999999999999999.0},
               {"smolar_units", "J/mol/K"}
@@ -1160,7 +1181,7 @@ public:
               {"hmolar_units", "J/mol"},
               {"p", feq.ptriple_kPa*1e3},
               {"p_units", "Pa"},
-              {"rhomolar", 99999999999999.0},
+              {"rhomolar", rhoVtriple},
               {"rhomolar_units", "mol/m^3"},
               {"smolar", 9999999999999999999.0},
               {"smolar_units", "J/mol/K"}
@@ -1283,7 +1304,7 @@ public:
         
         auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
         auto alpha0 = convert_CP0(internal::get_line_chunk(lines, "#AUX"), feq.value().Tred_K, feq.value().R);
-        auto EOS = convert_EOS(feq.value(), alpha0, head);
+        auto EOS = convert_EOS(feq.value(), alpha0, head, ancillaries);
 
         nlohmann::json f = {
             {"EOS", {EOS}},
