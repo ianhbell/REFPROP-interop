@@ -1509,7 +1509,7 @@ public:
                     {"Name", function_name},
                     {"type", "GERG-2008"},
                     {"Npower", Npower},
-                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-beta_i*(tau-gamma_i)^2-eta_i*(delta-epsilon_i)^2)"},
+                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-eta_i*(delta-epsilon_i)^2 -beta_i*(delta-gamma_i))"},
                     {"description", header},
                     {"n",n}, {"t",t}, {"d",d}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
                 });
