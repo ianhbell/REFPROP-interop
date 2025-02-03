@@ -1538,10 +1538,10 @@ public:
                     t.push_back(nums[1]);
                     d.push_back(nums[2]);
                     c.push_back(0);
-                    eta.push_back(nums[3]);
-                    epsilon.push_back(nums[4]);
-                    beta.push_back(nums[5]);
-                    gamma.push_back(nums[6]);
+                    eta.push_back(nums[5]);
+                    epsilon.push_back(nums[6]);
+                    beta.push_back(nums[7]);
+                    gamma.push_back(nums[8]);
                     
                 }
                 if (n.size() != Npower + N_exp){
