@@ -1299,7 +1299,7 @@ public:
         }
         catch(std::exception &e){
             warnings.push_back(std::string("Could not load ancillaries; message:") + e.what());
-//            std::cerr << e.what() << std::endl;
+            std::cerr << e.what() << std::endl;
         }
         
         auto feq = convert_FEQ(internal::get_line_chunk(lines, "#EOS"));
@@ -1428,6 +1428,7 @@ public:
                     {"description", "No departure function; just a no-op placeholder"},
                     {"n",_}, {"t",_}, {"d",_}, {"l",_}
                 });
+                continue;
             }
             std::string function_name = chunk[1].substr(0, 3);
             
