@@ -1349,6 +1349,8 @@ public:
                 break;
             }
             
+            nlohmann::json myentries = nlohmann::json::array();
+            
             for (auto k = j+1; k < jmax; ++k){
                 auto line = internal::strip_trailing_whitespace(internal::strip_leading_whitespace(BNCchunk[k]));
                 if (line.empty()){ continue; }
@@ -1382,7 +1384,7 @@ public:
                         }
                     }
                     
-                    entries.push_back({
+                    myentries.push_back({
                         {"info", internal::strjoin(header,"\n")},
                         {"BiBTeX", "?"},
                         {"hash1", hashes[0]},
@@ -1395,6 +1397,9 @@ public:
                         {"function", function_name}
                     });
                 }
+            }
+            if (myentries.size() > 0){
+                entries.push_back(myentries.back());
             }
             jmax = j;
         }
