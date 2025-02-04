@@ -1565,9 +1565,9 @@ public:
                     {"Name", function_name},
                     {"type", "Gaussian+Exponential"},
                     {"Npower", Npower},
-                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-beta_i*(tau-gamma_i)^2-eta_i*(delta-epsilon_i)^2)"},
+                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-(l_i>0)*delta^{l_i}-beta_i*(tau-gamma_i)^2-eta_i*(delta-epsilon_i)^2)"},
                     {"description", header},
-                    {"n",n}, {"t",t}, {"d",d}, {"c", c}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
+                    {"n",n}, {"t",t}, {"d",d}, {"l", c}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
                 });
             }
             else{
