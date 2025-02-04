@@ -1523,9 +1523,9 @@ public:
                     {"Name", function_name},
                     {"type", "GERG-2008"},
                     {"Npower", Npower},
-                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-eta_i*(delta-epsilon_i)^2 -beta_i*(delta-gamma_i))"},
+                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-(l_i>0)*delta^{l_i} -eta_i*(delta-epsilon_i)^2 -beta_i*(delta-gamma_i))"},
                     {"description", header},
-                    {"n",n}, {"t",t}, {"d",d}, {"c", c}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
+                    {"n",n}, {"t",t}, {"d",d}, {"l", c}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
                 });
             }
             else if (Npower > 0 && N_GERG == 0 && N_exp > 0){
