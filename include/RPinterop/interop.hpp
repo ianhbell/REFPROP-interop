@@ -968,7 +968,7 @@ inline HeaderResult convert_header(const std::vector<std::string>& lines){
     if (h.refstate.find("OT") == 0){ read1(); }
     h.RPversion = read1str();
     
-    if (h.RPversion == "10.0"){
+    if (h.RPversion == "10.0" || h.RPversion == "10.01"){
         for (; i < lines.size(); ++i){
             std::smatch match;
             // If an empty string
