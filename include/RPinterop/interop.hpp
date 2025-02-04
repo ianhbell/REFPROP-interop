@@ -1415,7 +1415,14 @@ public:
             auto chunk = internal::get_line_chunk(lines, "#MXM", istart);
             
             if (chunk[1].find("XR0 ") == 0){
-                continue;
+                std::vector<double> _ = {0.0};
+                terms.push_back({
+                    {"Name", "XR0"},
+                    {"type", "Exponential"},
+                    {"kind", "alpharij = 0"},
+                    {"description", "No departure function; just a no-op placeholder"},
+                    {"n",_}, {"t",_}, {"d",_}, {"l",_}
+                });
             }
             std::string function_name = chunk[1].substr(0, 3);
             
