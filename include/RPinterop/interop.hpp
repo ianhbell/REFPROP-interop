@@ -1510,6 +1510,7 @@ public:
                     n.push_back(nums[0]);
                     t.push_back(nums[1]);
                     d.push_back(nums[2]);
+                    c.push_back(0.0);
                     eta.push_back(nums[3]);
                     epsilon.push_back(nums[4]);
                     beta.push_back(nums[5]);
@@ -1524,7 +1525,7 @@ public:
                     {"Npower", Npower},
                     {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-eta_i*(delta-epsilon_i)^2 -beta_i*(delta-gamma_i))"},
                     {"description", header},
-                    {"n",n}, {"t",t}, {"d",d}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
+                    {"n",n}, {"t",t}, {"d",d}, {"c", c}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
                 });
             }
             else if (Npower > 0 && N_GERG == 0 && N_exp > 0){
@@ -1566,7 +1567,7 @@ public:
                     {"Npower", Npower},
                     {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-beta_i*(tau-gamma_i)^2-eta_i*(delta-epsilon_i)^2)"},
                     {"description", header},
-                    {"n",n}, {"t",t}, {"d",d}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
+                    {"n",n}, {"t",t}, {"d",d}, {"c", c}, {"eta",eta}, {"beta",beta}, {"gamma",gamma}, {"epsilon",epsilon},
                 });
             }
             else{
