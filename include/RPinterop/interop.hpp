@@ -1482,7 +1482,7 @@ public:
                 terms.push_back({
                     {"Name", function_name},
                     {"type", "Exponential"},
-                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-delta^c_i)"},
+                    {"kind", "alpharij = sum_i n_i*tau^t_i*delta^d_i*exp(-delta^l_i)"},
                     {"description", header},
                     {"n",n}, {"t",t}, {"d",d}, {"l", c}
                 });
